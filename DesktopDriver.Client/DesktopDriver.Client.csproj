@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Client</AssemblyTitle>
+    <Description>The typed client a test, a command line or an agent talks to an application through.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Contracts\DesktopDriver.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Protocol.Tests" />
+  </ItemGroup>
+
+</Project>

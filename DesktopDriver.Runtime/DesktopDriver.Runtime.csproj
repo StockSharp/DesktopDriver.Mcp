@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Runtime</AssemblyTitle>
+    <Description>Reading, identity, revisions and waiting: the toolkit-neutral core of StockSharp DesktopDriver.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ecng.Common" Version="$(EcngVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Contracts\DesktopDriver.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Runtime.Tests" />
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Avalonia" />
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Host" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>StockSharp.DesktopDriver.Tests.Protocol</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Avalonia.Headless" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Avalonia.Headless\DesktopDriver.Avalonia.Headless.csproj" />
+    <ProjectReference Include="..\DesktopDriver.Host\DesktopDriver.Host.csproj" />
+    <ProjectReference Include="..\DesktopDriver.Client\DesktopDriver.Client.csproj" />
+  </ItemGroup>
+
+</Project>

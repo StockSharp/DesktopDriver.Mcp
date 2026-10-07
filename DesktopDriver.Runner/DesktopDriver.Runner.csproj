@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Runner</AssemblyTitle>
+    <Description>Finds, starts and reaches the desktop applications that can be driven.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Client\DesktopDriver.Client.csproj" />
+  </ItemGroup>
+
+</Project>

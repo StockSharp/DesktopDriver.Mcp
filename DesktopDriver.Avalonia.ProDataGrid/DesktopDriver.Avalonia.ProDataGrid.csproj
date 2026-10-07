@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Avalonia.ProDataGrid</AssemblyTitle>
+    <Description>Reads an Avalonia DataGrid from ProDataGrid as a table for StockSharp DesktopDriver: columns, the rows it shows, groups and cells.</Description>
+    <!-- Avalonia's own types are not CLS-compliant, and the members here take them. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ProDataGrid" Version="$(ProDataGridVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Avalonia\DesktopDriver.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

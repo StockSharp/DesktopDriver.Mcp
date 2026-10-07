@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>StockSharp.DesktopDriver.Tests.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Cli\DesktopDriver.Cli.csproj" />
+  </ItemGroup>
+
+</Project>

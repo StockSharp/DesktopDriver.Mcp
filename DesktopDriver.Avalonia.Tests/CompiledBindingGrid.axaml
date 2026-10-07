@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tests="using:StockSharp.DesktopDriver.Tests"
+             x:Class="StockSharp.DesktopDriver.Tests.CompiledBindingGrid"
+             x:CompileBindings="True">
+  <!-- The binding every product here is built with. It is the whole point of this control: a column
+       bound this way says nothing about what it sorts by. -->
+  <DataGrid x:Name="Rows" AutoGenerateColumns="False">
+    <DataGrid.Columns>
+      <DataGridTextColumn x:DataType="tests:CompiledBindingRow"
+                          ColumnKey="TheName" Header="Name" Binding="{Binding Name}" />
+      <DataGridTextColumn x:DataType="tests:CompiledBindingRow"
+                          ColumnKey="ThePrice" Header="Price" Binding="{Binding Price}" />
+    </DataGrid.Columns>
+  </DataGrid>
+</UserControl>

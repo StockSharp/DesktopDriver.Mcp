@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Avalonia.Dock</AssemblyTitle>
+    <Description>Reads a Dock.Avalonia workspace for StockSharp DesktopDriver: its groups, its panels and where each panel's content is.</Description>
+    <!-- Avalonia's own types are not CLS-compliant, and the members here take them. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dock.Avalonia" Version="$(DockAvaloniaVer)" />
+    <PackageReference Include="Dock.Model" Version="$(DockAvaloniaVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Avalonia\DesktopDriver.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

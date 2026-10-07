@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>desktop-driver</ToolCommandName>
+    <AssemblyTitle>S#.DesktopDriver.Cli</AssemblyTitle>
+    <Description>Reads and drives a running desktop application from a command line.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>StockSharp.DesktopDriver.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Runner\DesktopDriver.Runner.csproj" />
+  </ItemGroup>
+
+</Project>

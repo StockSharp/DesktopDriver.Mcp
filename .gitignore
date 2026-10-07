@@ -1,0 +1,13 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+
+# Test results
+[Tt]est[Rr]esult*/
+
+# IDE state
+.vs/
+.idea/
+*.suo
+*.user

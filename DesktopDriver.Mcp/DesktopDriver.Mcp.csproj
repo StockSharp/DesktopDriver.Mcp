@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>desktop-driver-mcp</ToolCommandName>
+    <AssemblyTitle>S#.DesktopDriver.Mcp</AssemblyTitle>
+    <Description>Lets an agent read and drive desktop applications over MCP.</Description>
+    <RootNamespace>StockSharp.DesktopDriver.Mcp</RootNamespace>
+    <!-- ui_screenshot_image answers with the MCP image type, which is not CLS-compliant. Nothing
+         compiles against this project: it is an executable an agent spawns. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="$(McpVer)" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="$(MsExtensionsVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Runner\DesktopDriver.Runner.csproj" />
+  </ItemGroup>
+
+</Project>

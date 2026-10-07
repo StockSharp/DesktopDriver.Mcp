@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Contracts</AssemblyTitle>
+    <Description>Transport-neutral contracts of the StockSharp DesktopDriver protocol.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Contracts.Tests" />
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Runtime" />
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Host" />
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Client" />
+  </ItemGroup>
+
+</Project>

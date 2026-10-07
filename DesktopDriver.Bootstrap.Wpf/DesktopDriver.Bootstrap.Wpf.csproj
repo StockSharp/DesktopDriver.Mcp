@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)-windows</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Bootstrap.Wpf</AssemblyTitle>
+    <Description>Turns a WPF application into one that can be driven.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Wpf\DesktopDriver.Wpf.csproj" />
+    <ProjectReference Include="..\DesktopDriver.Host\DesktopDriver.Host.csproj" />
+  </ItemGroup>
+
+</Project>

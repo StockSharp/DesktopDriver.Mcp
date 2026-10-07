@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\props\Maui.props" />
+
+  <PropertyGroup>
+    <!--
+      Windows is the platform a runner drives: it reaches the product through a pipe on the machine it runs
+      on, and what measures a control, finds what is under a point and draws a picture is Windows code, kept
+      under Platforms\Windows. The build with no platform is the rest of it - names, states, revisions, keys,
+      taps - which needs nothing of a platform and is tested on its own.
+    -->
+    <TargetFrameworks>$(NetTfm);$(NetTfm)-windows10.0.19041.0</TargetFrameworks>
+    <AssemblyTitle>S#.DesktopDriver.Maui</AssemblyTitle>
+    <Description>Reads, drives and pictures MAUI controls for StockSharp DesktopDriver.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- MAUI's own types are not CLS-compliant, and every member here takes one. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MsExtensionsVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Runtime\DesktopDriver.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Maui.Tests" />
+  </ItemGroup>
+
+</Project>

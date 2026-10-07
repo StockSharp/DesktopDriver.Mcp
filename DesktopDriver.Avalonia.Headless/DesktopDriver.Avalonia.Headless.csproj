@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Avalonia.Headless</AssemblyTitle>
+    <Description>Input backend for headless Avalonia, used by tests rather than by shipped applications.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Avalonia's own types are not CLS-compliant, and the members here take them. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Avalonia.Headless" Version="$(AvaloniaVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Avalonia\DesktopDriver.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

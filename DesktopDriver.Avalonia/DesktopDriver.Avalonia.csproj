@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Avalonia</AssemblyTitle>
+    <Description>Reads, drives and pictures Avalonia controls for StockSharp DesktopDriver.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Avalonia's own types are not CLS-compliant, and the members here take them. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Runtime\DesktopDriver.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StockSharp.DesktopDriver.Avalonia.Tests" />
+  </ItemGroup>
+
+</Project>

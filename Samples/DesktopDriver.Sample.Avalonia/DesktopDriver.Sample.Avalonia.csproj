@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Sample.Avalonia</AssemblyTitle>
+    <Description>An Avalonia application that can be driven: the integration the README describes, and what the MCP tests drive.</Description>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVer)" />
+    <PackageReference Include="ProDataGrid" Version="$(ProDataGridVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\DesktopDriver.Bootstrap.Avalonia\DesktopDriver.Bootstrap.Avalonia.csproj" />
+    <ProjectReference Include="..\..\DesktopDriver.Avalonia.ProDataGrid\DesktopDriver.Avalonia.ProDataGrid.csproj" />
+  </ItemGroup>
+
+</Project>

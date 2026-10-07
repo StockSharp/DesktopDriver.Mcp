@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- A WPF window is shown and photographed, so these run where the backend runs: on a Windows desktop. -->
+    <TargetFramework>$(NetTfm)-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>StockSharp.DesktopDriver.Tests.Wpf</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Wpf\DesktopDriver.Wpf.csproj" />
+  </ItemGroup>
+
+</Project>

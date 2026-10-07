@@ -1,0 +1,77 @@
+<Project>
+
+  <PropertyGroup>
+    <NetTfm>net10.0</NetTfm>
+    <LangVersion>latest</LangVersion>
+
+    <AssemblyName>StockSharp.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+
+    <Product>StockSharp DesktopDriver</Product>
+    <Company>StockSharp Platform LLC</Company>
+    <Authors>StockSharp</Authors>
+    <Copyright>Copyright @ $(Company) 2010 - $([System.DateTime]::Now.ToString(yyyy))</Copyright>
+    <Version>1.0.0</Version>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DebugType>portable</DebugType>
+
+    <PackageId>$(AssemblyName)</PackageId>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://stocksharp.com</PackageProjectUrl>
+    <PackageTags>ui-automation;testing;mcp;avalonia;wpf;maui</PackageTags>
+  </PropertyGroup>
+
+  <!-- The versions of everything the driver is built against, in one place. -->
+  <PropertyGroup>
+    <EcngVer>1.0.*</EcngVer>
+    <AvaloniaVer>12.*</AvaloniaVer>
+    <ProDataGridVer>12.*</ProDataGridVer>
+    <DockAvaloniaVer>12.*</DockAvaloniaVer>
+    <McpVer>2.*</McpVer>
+    <MsExtensionsVer>10.*</MsExtensionsVer>
+    <MsTestVer>4.*</MsTestVer>
+    <MsTestSdkVer>18.*</MsTestSdkVer>
+    <MoqVer>4.*</MoqVer>
+  </PropertyGroup>
+
+  <!-- Every project whose name ends in Tests is a test project: it is not packed and needs no documentation. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <PackageReference Include="Moq" Version="$(MoqVer)" />
+    <PackageReference Include="Ecng.UnitTesting" Version="$(EcngVer)" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(MsTestSdkVer)" />
+    <PackageReference Include="MSTest.TestAdapter" Version="$(MsTestVer)" />
+    <PackageReference Include="MSTest.TestFramework" Version="$(MsTestVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyTrademarkAttribute">
+      <_Parameter1>StockSharp</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Condition=" !$(DefineConstants.Contains('CLS_DISABLE')) " Include="System.CLSCompliantAttribute">
+      <_Parameter1>true</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Resources.NeutralResourcesLanguageAttribute">
+      <_Parameter1>en-US</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Runtime.InteropServices.ComVisibleAttribute">
+      <_Parameter1>false</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- A package carries the licence and the description of the product it is a part of. -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+</Project>

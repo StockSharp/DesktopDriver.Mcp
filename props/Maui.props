@@ -1,0 +1,18 @@
+<Project>
+
+  <!--
+    Imported by the MAUI projects. A product is driven in its Windows build - the one a runner on the same
+    machine can reach - so that is the only platform these projects name; the plain target holds what
+    needs no platform at all and is what the tests exercise.
+  -->
+  <PropertyGroup>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+</Project>

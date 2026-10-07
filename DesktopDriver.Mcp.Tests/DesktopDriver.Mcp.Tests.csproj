@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>StockSharp.DesktopDriver.Tests.Mcp</RootNamespace>
+    <!-- The MCP client's own types are not CLS-compliant, and this assembly is a test host. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="$(McpVer)" />
+  </ItemGroup>
+
+  <!--
+    The server is driven the way an agent drives it: its own process, spoken to over stdio by a real MCP
+    client. Calling its tool methods directly would test the methods and not the server, and everything
+    that could be wrong about it - the tool names, the schemas, what reaches stdout - only exists once
+    the two processes are talking.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Runner\DesktopDriver.Runner.csproj" />
+    <ProjectReference Include="..\DesktopDriver.Mcp\DesktopDriver.Mcp.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Samples\DesktopDriver.Sample.Avalonia\DesktopDriver.Sample.Avalonia.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="McpServerExecutable"
+                      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\DesktopDriver.Mcp\bin\$(Configuration)\$(NetTfm)\StockSharp.DesktopDriver.Mcp.exe'))" />
+    <AssemblyMetadata Include="SampleExecutable"
+                      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\Samples\DesktopDriver.Sample.Avalonia\bin\$(Configuration)\$(NetTfm)\StockSharp.DesktopDriver.Sample.Avalonia.exe'))" />
+  </ItemGroup>
+
+</Project>

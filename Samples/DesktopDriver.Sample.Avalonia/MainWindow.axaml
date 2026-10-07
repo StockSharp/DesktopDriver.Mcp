@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:DesktopDriver.Sample"
+        x:Class="DesktopDriver.Sample.MainWindow"
+        Title="DesktopDriver sample"
+        Width="960"
+        Height="600">
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+      <TextBox x:Name="SymbolBox" Width="180" PlaceholderText="Symbol" />
+      <Button x:Name="AddButton" Content="Add" Click="OnAdd" />
+      <CheckBox x:Name="LiveOnly" Content="Only open markets" />
+    </StackPanel>
+
+    <TreeView x:Name="Markets" DockPanel.Dock="Left" Width="220" Margin="0,0,12,0">
+      <TreeViewItem Header="Stocks" IsExpanded="True">
+        <TreeViewItem Header="NASDAQ" />
+        <TreeViewItem Header="NYSE" />
+      </TreeViewItem>
+      <TreeViewItem Header="Futures">
+        <TreeViewItem Header="CME" />
+      </TreeViewItem>
+    </TreeView>
+
+    <DataGrid x:Name="Instruments"
+              x:DataType="local:Instrument"
+              AutoGenerateColumns="False"
+              IsReadOnly="True"
+              CanUserSortColumns="True">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Symbol" Binding="{Binding Symbol}" Width="*" />
+        <DataGridTextColumn Header="Exchange" Binding="{Binding Exchange}" Width="*" />
+        <DataGridTextColumn Header="Price" Binding="{Binding Price}" Width="*" />
+        <DataGridTextColumn Header="Volume" Binding="{Binding Volume}" Width="*" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</Window>

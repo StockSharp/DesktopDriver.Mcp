@@ -1,0 +1,39 @@
+<Solution>
+  <Project Path="DesktopDriver.Avalonia.Dock/DesktopDriver.Avalonia.Dock.csproj" />
+  <Project Path="DesktopDriver.Avalonia.Headless/DesktopDriver.Avalonia.Headless.csproj" />
+  <Project Path="DesktopDriver.Avalonia.ProDataGrid/DesktopDriver.Avalonia.ProDataGrid.csproj" />
+  <Project Path="DesktopDriver.Avalonia/DesktopDriver.Avalonia.csproj" />
+  <Project Path="DesktopDriver.Bootstrap.Avalonia/DesktopDriver.Bootstrap.Avalonia.csproj" />
+  <Project Path="DesktopDriver.Bootstrap.Maui/DesktopDriver.Bootstrap.Maui.csproj" />
+  <Project Path="DesktopDriver.Bootstrap.Wpf/DesktopDriver.Bootstrap.Wpf.csproj" />
+  <Project Path="DesktopDriver.Cli/DesktopDriver.Cli.csproj" />
+  <Project Path="DesktopDriver.Client/DesktopDriver.Client.csproj" />
+  <Project Path="DesktopDriver.Contracts/DesktopDriver.Contracts.csproj" />
+  <Project Path="DesktopDriver.Host/DesktopDriver.Host.csproj" />
+  <Project Path="DesktopDriver.Maui/DesktopDriver.Maui.csproj" />
+  <Project Path="DesktopDriver.Mcp/DesktopDriver.Mcp.csproj" />
+  <Project Path="DesktopDriver.Runner/DesktopDriver.Runner.csproj" />
+  <Project Path="DesktopDriver.Runtime/DesktopDriver.Runtime.csproj" />
+  <Project Path="DesktopDriver.Testing/DesktopDriver.Testing.csproj" />
+  <Project Path="DesktopDriver.Wpf/DesktopDriver.Wpf.csproj" />
+  <Folder Name="/Samples/">
+    <Project Path="Samples/DesktopDriver.Sample.Avalonia/DesktopDriver.Sample.Avalonia.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="DesktopDriver.Avalonia.Tests/DesktopDriver.Avalonia.Tests.csproj" />
+    <Project Path="DesktopDriver.Cli.Tests/DesktopDriver.Cli.Tests.csproj" />
+    <Project Path="DesktopDriver.Contracts.Tests/DesktopDriver.Contracts.Tests.csproj" />
+    <Project Path="DesktopDriver.Maui.Tests/DesktopDriver.Maui.Tests.csproj" />
+    <Project Path="DesktopDriver.Mcp.Tests/DesktopDriver.Mcp.Tests.csproj" />
+    <Project Path="DesktopDriver.Protocol.Tests/DesktopDriver.Protocol.Tests.csproj" />
+    <Project Path="DesktopDriver.Runtime.Tests/DesktopDriver.Runtime.Tests.csproj" />
+    <Project Path="DesktopDriver.Wpf.Tests/DesktopDriver.Wpf.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="props/Maui.props" />
+  </Folder>
+</Solution>

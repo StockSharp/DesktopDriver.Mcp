@@ -1,0 +1,20 @@
+{
+  // Copy this beside itself as applications.json, or put one anywhere and name it in
+  // STOCKSHARP_UI_CATALOGUE.
+  //
+  // This is the whole list of what an agent may start. The agent names an application from it and never
+  // a path of its own: a server that started whatever path it was handed would be a way to run anything
+  // on this machine, dressed up as automation.
+  //
+  // A path may be relative, and is then resolved against this file rather than against whatever the
+  // working directory happens to be. Every executable here has to be a build with the driver in it: one
+  // without has no endpoint to connect to.
+  "applications": [
+    {
+      "appId": "desktopdriver.sample",
+      "executable": "..\\Samples\\DesktopDriver.Sample.Avalonia\\bin\\Release\\net10.0\\StockSharp.DesktopDriver.Sample.Avalonia.exe",
+      "arguments": "",
+      "description": "The sample: a table of instruments, the markets they trade on, and a way to add one."
+    }
+  ]
+}

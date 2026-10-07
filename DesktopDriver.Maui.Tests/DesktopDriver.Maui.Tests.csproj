@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      The backend's build with no platform: MAUI's controls there are its own and nothing else, while the
+      Windows ones are WinUI controls underneath and cannot be made outside a running application.
+    -->
+    <UseMaui>true</UseMaui>
+    <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
+    <RootNamespace>StockSharp.DesktopDriver.Tests.Maui</RootNamespace>
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MsExtensionsVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Maui\DesktopDriver.Maui.csproj" />
+  </ItemGroup>
+
+</Project>

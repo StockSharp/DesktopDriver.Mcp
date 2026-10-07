@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>StockSharp.DesktopDriver.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Avalonia.Headless" Version="$(AvaloniaVer)" />
+    <!-- The pictures these tests read have to have been painted by something. -->
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVer)" />
+    <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="$(DockAvaloniaVer)" />
+    <PackageReference Include="Dock.Model.Mvvm" Version="$(DockAvaloniaVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Avalonia.Headless\DesktopDriver.Avalonia.Headless.csproj" />
+    <ProjectReference Include="..\DesktopDriver.Avalonia.ProDataGrid\DesktopDriver.Avalonia.ProDataGrid.csproj" />
+    <ProjectReference Include="..\DesktopDriver.Avalonia.Dock\DesktopDriver.Avalonia.Dock.csproj" />
+  </ItemGroup>
+
+</Project>

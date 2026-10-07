@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)</TargetFramework>
+    <AssemblyTitle>S#.DesktopDriver.Bootstrap</AssemblyTitle>
+    <Description>Turns an Avalonia application into one that can be driven, when it is started that way.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Avalonia's own types are not CLS-compliant, and the members here take them. -->
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Avalonia\DesktopDriver.Avalonia.csproj" />
+    <ProjectReference Include="..\DesktopDriver.Host\DesktopDriver.Host.csproj" />
+  </ItemGroup>
+
+</Project>
