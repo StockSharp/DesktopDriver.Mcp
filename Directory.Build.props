@@ -20,6 +20,8 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://stocksharp.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/StockSharp/DesktopDriver.Mcp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageTags>ui-automation;testing;mcp;avalonia;wpf;maui</PackageTags>
   </PropertyGroup>
 

@@ -109,6 +109,7 @@ From an agent: register the MCP server, see [DesktopDriver.Mcp](DesktopDriver.Mc
 - [What answers for which control](docs/adapters.md), and how to add an adapter
 - [The command line](docs/cli.md)
 - [The MCP server](DesktopDriver.Mcp/README.md)
+- [Builds, test suites and releases](docs/releasing.md)
 
 ## Build and test
 

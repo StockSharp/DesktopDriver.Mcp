@@ -1,0 +1,99 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: Package and assembly version for a release build.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PACKAGE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.400
+
+      - name: Install the MAUI Windows workload
+        run: dotnet workload install maui-windows --skip-manifest-update
+
+      - run: dotnet restore DesktopDriver.slnx
+
+      - name: Build every toolkit and tool
+        run: |
+          $versionArgument = @()
+          if ($env:PACKAGE_VERSION) { $versionArgument = @('-p:Version=' + $env:PACKAGE_VERSION) }
+          dotnet build DesktopDriver.slnx --configuration Release --no-restore @versionArgument
+
+      - name: Run tests that need no desktop session
+        run: ./.github/scripts/Test.ps1 -Suite Headless
+
+      - name: Pack libraries and command-line tools
+        run: |
+          $versionArgument = @()
+          if ($env:PACKAGE_VERSION) { $versionArgument = @('-p:Version=' + $env:PACKAGE_VERSION) }
+          dotnet pack DesktopDriver.slnx --configuration Release --no-build --no-restore --output artifacts/packages @versionArgument
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-results
+          path: artifacts/test-results/
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: artifacts/packages/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
+
+  # Enable this only for a runner started in an interactive Windows desktop session.
+  desktop:
+    if: vars.DESKTOP_TESTS_ENABLED == 'true' && github.event_name != 'pull_request'
+    needs: build-and-test
+    runs-on: [self-hosted, Windows, X64, desktop]
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.400
+
+      - run: dotnet build DesktopDriver.slnx --configuration Release
+
+      - name: Run tests that open real windows
+        run: ./.github/scripts/Test.ps1 -Suite Desktop
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: desktop-test-results
+          path: artifacts/test-results/
+          retention-days: 7

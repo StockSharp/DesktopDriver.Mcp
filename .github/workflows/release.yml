@@ -1,0 +1,73 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the leading v, for example 1.0.0 or 1.0.0-beta.1.
+        required: true
+        type: string
+      dry_run:
+        description: Build, test and pack without creating a tag or release.
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: version
+        env:
+          TYPED: ${{ inputs.version }}
+        shell: bash
+        run: |
+          version="${TYPED:-${GITHUB_REF_NAME#v}}"
+          if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "::error::Use a version such as 1.0.0 or 1.0.0-beta.1."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  package:
+    needs: prepare
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+
+  publish:
+    if: github.event_name == 'push' || !inputs.dry_run
+    needs: [prepare, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: packages
+          path: packages
+
+      - name: Publish the GitHub release
+        shell: bash
+        run: |
+          options=()
+          if [[ "$VERSION" == *-* ]]; then options+=(--prerelease); fi
+          notes="Contains the StockSharp.DesktopDriver NuGet libraries and the desktop-driver and desktop-driver-mcp .NET tool packages. Requires .NET 10. WPF and the MAUI platform backend target Windows."
+          gh release create "v$VERSION" packages/*.nupkg \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "DesktopDriver $VERSION" \
+            --notes "$notes" \
+            --generate-notes "${options[@]}"
