@@ -6,6 +6,9 @@ that need no desktop session, and uploads the `.nupkg` files and test reports as
 Tests always have a filter, a two-minute hang timeout and a five-minute session timeout. Assemblies
 run in sequence.
 
+`global.json` pins the SDK so an additional SDK on a runner does not change the build. Update it when
+changing the SDK and check the resulting build and test run.
+
 `Contracts`, `Runtime` and `Cli` contain unit tests. `Protocol` exercises a real host and client with
 Avalonia Headless. The Avalonia suite uses headless controls, and the MAUI suite exercises controls
 without their native platform handlers. The MCP surface tests start the server without opening an

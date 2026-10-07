@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.400
+          global-json-file: global.json
 
       - name: Install the MAUI Windows workload
         run: dotnet workload install maui-windows --skip-manifest-update
@@ -84,7 +84,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.400
+          global-json-file: global.json
 
       - run: dotnet build DesktopDriver.slnx --configuration Release
 
