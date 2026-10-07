@@ -10,7 +10,7 @@ on:
         required: true
         type: string
       dry_run:
-        description: Build, test and pack without creating a tag or release.
+        description: Build, test and validate packages without publishing to NuGet.org or GitHub.
         required: true
         type: boolean
         default: true
@@ -37,6 +37,24 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Check NuGet publishing configuration
+        id: nuget-configuration
+        env:
+          NUGET_USER: ${{ vars.NUGET_USER }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          PUBLISH: ${{ github.event_name == 'push' || !inputs.dry_run }}
+        shell: bash
+        run: |
+          if [[ -z "$NUGET_USER" && -z "$NUGET_API_KEY" ]]; then
+            if [[ "$PUBLISH" == 'true' ]]; then
+              echo "::error::Set the repository variable NUGET_USER and configure its NuGet.org Trusted Publishing policy for release.yml, or add the NUGET_API_KEY secret. See docs/releasing.md."
+              exit 1
+            fi
+            echo "::notice::NuGet publishing is not configured. Dry run will validate packages without uploading them. See docs/releasing.md."
+          else
+            echo "NuGet publishing configuration is available."
+          fi
+
   package:
     needs: prepare
     uses: ./.github/workflows/build.yml
@@ -50,14 +68,45 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      id-token: write
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
       - uses: actions/download-artifact@v8
         with:
           name: packages
           path: packages
+
+      - name: Validate the release packages
+        shell: pwsh
+        run: ./.github/scripts/Test-Packages.ps1 -PackageDirectory packages -Version $env:VERSION
+
+      - name: Get a short-lived NuGet publishing key
+        id: nuget-login
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        if: env.NUGET_API_KEY == ''
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Publish packages to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY || steps.nuget-login.outputs.NUGET_API_KEY }}
+        shell: pwsh
+        run: |
+          foreach ($package in Get-ChildItem -LiteralPath packages -Filter '*.nupkg' -File) {
+            dotnet nuget push $package.FullName --source https://api.nuget.org/v3/index.json `
+              --api-key $env:NUGET_API_KEY --skip-duplicate --timeout 120
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Publish the GitHub release
         shell: bash

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetTfm)-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>StockSharp.DesktopDriver.Tests.Windows</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopDriver.Runner\DesktopDriver.Runner.csproj" />
+    <ProjectReference Include="..\Samples\DesktopDriver.Sample.Wpf\DesktopDriver.Sample.Wpf.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Samples\DesktopDriver.Sample.Maui.Windows\DesktopDriver.Sample.Maui.Windows.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="WpfExecutable"
+                      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\Samples\DesktopDriver.Sample.Wpf\bin\$(Configuration)\$(NetTfm)-windows\StockSharp.DesktopDriver.Sample.Wpf.exe'))" />
+    <AssemblyMetadata Include="MauiExecutable"
+                      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\Samples\DesktopDriver.Sample.Maui.Windows\bin\$(Configuration)\$(NetTfm)-windows10.0.19041.0\win-x64\StockSharp.DesktopDriver.Sample.Maui.Windows.exe'))" />
+  </ItemGroup>
+
+</Project>

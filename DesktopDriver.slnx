@@ -18,6 +18,8 @@
   <Project Path="DesktopDriver.Wpf/DesktopDriver.Wpf.csproj" />
   <Folder Name="/Samples/">
     <Project Path="Samples/DesktopDriver.Sample.Avalonia/DesktopDriver.Sample.Avalonia.csproj" />
+    <Project Path="Samples/DesktopDriver.Sample.Maui.Windows/DesktopDriver.Sample.Maui.Windows.csproj" />
+    <Project Path="Samples/DesktopDriver.Sample.Wpf/DesktopDriver.Sample.Wpf.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="DesktopDriver.Avalonia.Tests/DesktopDriver.Avalonia.Tests.csproj" />
@@ -28,6 +30,7 @@
     <Project Path="DesktopDriver.Protocol.Tests/DesktopDriver.Protocol.Tests.csproj" />
     <Project Path="DesktopDriver.Runtime.Tests/DesktopDriver.Runtime.Tests.csproj" />
     <Project Path="DesktopDriver.Wpf.Tests/DesktopDriver.Wpf.Tests.csproj" />
+    <Project Path="DesktopDriver.Windows.Tests/DesktopDriver.Windows.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />

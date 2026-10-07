@@ -56,6 +56,7 @@ internal sealed class AvaloniaRevisionWatcher(IUiRevisionSink revisions)
 	/// </summary>
 	/// <param name="control">The control.</param>
 	/// <param name="id">The address it answers to.</param>
+	/// <param name="viewRules">Additional properties that move the control's view revision.</param>
 	/// <remarks>
 	/// Nothing here keeps the control alive: the handler is registered on the control itself and dies
 	/// with it. The table only remembers which controls are already watched, so binding one twice does

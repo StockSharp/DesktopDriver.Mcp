@@ -25,6 +25,7 @@ if ($Suite -eq 'Headless') {
 } else {
     $groups = @(
         @{ Project = 'DesktopDriver.Wpf.Tests'; Filter = 'FullyQualifiedName~StockSharp.DesktopDriver.Tests.Wpf' },
+        @{ Project = 'DesktopDriver.Windows.Tests'; Filter = 'FullyQualifiedName~StockSharp.DesktopDriver.Tests.Windows' },
         @{ Project = 'DesktopDriver.Mcp.Tests'; Filter = 'FullyQualifiedName~StockSharp.DesktopDriver.Tests.Mcp' }
     )
 }

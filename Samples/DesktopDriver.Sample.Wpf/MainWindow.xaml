@@ -1,0 +1,22 @@
+<Window x:Class="DesktopDriver.Sample.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        AutomationProperties.AutomationId="MainWindow" Title="DesktopDriver WPF sample"
+        Width="640" Height="480">
+  <StackPanel Margin="24">
+    <TextBlock Text="DesktopDriver WPF" FontSize="24" Margin="0,0,0,16" />
+    <TextBox x:Name="InputText" AutomationProperties.AutomationId="InputText"
+             Text="Initial text" Margin="0,0,0,12" />
+    <Button x:Name="ApplyButton" AutomationProperties.AutomationId="ApplyButton"
+            Content="Apply" Click="ApplyClicked" Margin="0,0,0,12" />
+    <TextBlock x:Name="ResultText" AutomationProperties.AutomationId="ResultText"
+               Text="Ready" Margin="0,0,0,12" />
+    <CheckBox x:Name="EnabledToggle" AutomationProperties.AutomationId="EnabledToggle"
+              Content="Enabled" Margin="0,0,0,12" />
+    <ListBox x:Name="ItemList" AutomationProperties.AutomationId="ItemList" Height="120">
+      <ListBoxItem Content="Alpha" />
+      <ListBoxItem Content="Beta" />
+      <ListBoxItem Content="Gamma" />
+    </ListBox>
+  </StackPanel>
+</Window>

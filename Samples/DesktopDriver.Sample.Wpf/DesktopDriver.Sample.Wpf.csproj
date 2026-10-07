@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(NetTfm)-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Description>A WPF application driven by the Windows integration tests.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\DesktopDriver.Bootstrap.Wpf\DesktopDriver.Bootstrap.Wpf.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -25,6 +25,19 @@
     <PackageTags>ui-automation;testing;mcp;avalonia;wpf;maui</PackageTags>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('DesktopDriver.Sample.'))">
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DefineConstants>$(DefineConstants);CLS_DISABLE</DefineConstants>
+  </PropertyGroup>
+
+  <!-- The native MAUI sample runs directly from its build output without registering an MSIX package. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'DesktopDriver.Sample.Maui.Windows'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+  </PropertyGroup>
+
   <!-- The versions of everything the driver is built against, in one place. -->
   <PropertyGroup>
     <EcngVer>1.0.*</EcngVer>

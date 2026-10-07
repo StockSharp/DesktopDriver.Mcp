@@ -71,6 +71,10 @@ public override void OnFrameworkInitializationCompleted()
 Dispose the returned runtime when the application exits. `WpfAutomationBootstrap` and
 `MauiAutomationBootstrap` take the same arguments.
 
+The [sample applications](docs/samples.md) show startup and shutdown for all three toolkits. The WPF
+and MAUI Windows samples also have tests that start their executables, connect over the local pipe,
+read their controls, send input and retrieve screenshots.
+
 `UiAutomationStartup.For` decides whether input is allowed. An application that talks to nothing outside
 its own process is always safe to click through. One that connects to something real - a broker, a
 store, a service - is safe only when it was started on a test profile that replaces it; otherwise the
@@ -110,6 +114,7 @@ From an agent: register the MCP server, see [DesktopDriver.Mcp](DesktopDriver.Mc
 - [The command line](docs/cli.md)
 - [The MCP server](DesktopDriver.Mcp/README.md)
 - [Builds, test suites and releases](docs/releasing.md)
+- [Sample applications and Windows integration tests](docs/samples.md)
 
 ## Build and test
 
@@ -118,8 +123,10 @@ dotnet build DesktopDriver.slnx
 dotnet test DesktopDriver.Runtime.Tests --filter "FullyQualifiedName~Revision"
 ```
 
-The MAUI projects need the MAUI workload. The MCP tests start the sample and the WPF tests show a window, so
-both need a desktop session.
+The MAUI projects need the MAUI Windows workload. MCP application tests, WPF screenshot tests and
+`DesktopDriver.Windows.Tests` need an interactive Windows desktop session. Run the filtered suites
+with hang and session timeouts using `./.github/scripts/Test.ps1 -Suite Headless` or `-Suite Desktop`
+after a Release build.
 
 ## Packages from source
 

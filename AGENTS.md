@@ -24,7 +24,8 @@ adapters and the command line.
 | `DesktopDriver.Cli`, `DesktopDriver.Mcp` | the command line (`desktop-driver`) and the MCP server (`desktop-driver-mcp`) |
 | `DesktopDriver.Avalonia*`, `DesktopDriver.Wpf`, `DesktopDriver.Maui` | one backend per toolkit: reading, input and pictures of its standard controls |
 | `DesktopDriver.Bootstrap.*` | one call that makes an application of that toolkit drivable |
-| `Samples/DesktopDriver.Sample.Avalonia` | the application the MCP tests drive |
+| `Samples/DesktopDriver.Sample.*` | applications for Avalonia, WPF and MAUI Windows |
+| `DesktopDriver.Windows.Tests` | separate WPF and MAUI Windows processes with native controls |
 | `*.Tests` | a test project per layer |
 
 ## Build and test
@@ -34,8 +35,9 @@ dotnet build DesktopDriver.slnx
 dotnet test DesktopDriver.Runtime.Tests --filter "FullyQualifiedName~Revision"
 ```
 
-Always run tests with a `--filter`. `DesktopDriver.Mcp.Tests` start the sample and `DesktopDriver.Wpf.Tests` show
-a window, so both need a Windows desktop session; the MAUI projects need the MAUI workload.
+Always run tests with a `--filter` and a timeout. `DesktopDriver.Mcp.Tests` start the Avalonia sample,
+`DesktopDriver.Wpf.Tests` show a window, and `DesktopDriver.Windows.Tests` start the WPF and MAUI Windows
+samples, so these application tests need a Windows desktop session. The MAUI projects need the MAUI workload.
 
 Build settings are in `Directory.Build.props` and nowhere else: the assembly of a project is
 `StockSharp.<project name>`, a project whose name ends in `.Tests` is a test project, and nothing is imported

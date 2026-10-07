@@ -67,9 +67,9 @@ internal sealed class HostedApplication : IAsyncDisposable
 		Dispatcher.UIThread.RunJobs();
 		Window.UpdateLayout();
 
-		// A window is hit-tested through the frame composed of it, and an application opens its endpoint only
-		// once one has been; the hosted one is not let answer earlier either.
-		AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+		// Finish a frame before sending input: a render timer tick alone can leave the compositor's
+		// hit-test data pending, even though the controls have already been laid out.
+		Window.CaptureRenderedFrame()?.Dispose();
 		Dispatcher.UIThread.RunJobs();
 
 		var roots = new AvaloniaRootTracker(binder) { Explicit = [Window] };

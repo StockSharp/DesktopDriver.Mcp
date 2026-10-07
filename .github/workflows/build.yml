@@ -56,6 +56,14 @@ jobs:
           if ($env:PACKAGE_VERSION) { $versionArgument = @('-p:Version=' + $env:PACKAGE_VERSION) }
           dotnet pack DesktopDriver.slnx --configuration Release --no-build --no-restore --output artifacts/packages @versionArgument
 
+      - name: Validate package identities, versions and dependencies
+        run: |
+          $version = $env:PACKAGE_VERSION
+          if (-not $version) {
+            $version = dotnet msbuild DesktopDriver.Contracts/DesktopDriver.Contracts.csproj -nologo -getProperty:PackageVersion
+          }
+          ./.github/scripts/Test-Packages.ps1 -PackageDirectory artifacts/packages -Version $version
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
