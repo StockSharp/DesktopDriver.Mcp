@@ -39,7 +39,11 @@ jobs:
       - name: Install the MAUI Windows workload
         run: dotnet workload install maui-windows --skip-manifest-update
 
-      - run: dotnet restore DesktopDriver.slnx
+      - name: Restore release projects and runtime packs
+        run: |
+          $versionArgument = @()
+          if ($env:PACKAGE_VERSION) { $versionArgument = @('-p:Version=' + $env:PACKAGE_VERSION) }
+          dotnet restore DesktopDriver.slnx -p:Configuration=Release @versionArgument
 
       - name: Build every toolkit and tool
         run: |
