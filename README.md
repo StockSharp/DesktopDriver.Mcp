@@ -119,6 +119,8 @@ tools/desktop-driver grid-rows --endpoint endpoint.json --node window:MainWindow
 
 From an agent: register the MCP server, see [DesktopDriver.Mcp](DesktopDriver.Mcp/README.md).
 
+Its MCP name is `StockSharp.DesktopDriver`, and its display title is `StockSharp DesktopDriver`.
+
 ## Documents
 
 - [How the driver is built](docs/architecture.md)

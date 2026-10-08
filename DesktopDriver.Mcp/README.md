@@ -6,6 +6,9 @@ An MCP server that lets an agent read and drive desktop applications. It speaks 
 client spawns it as a child process; it talks to the applications over the named-pipe protocol in
 `StockSharp.DesktopDriver.Contracts`, the same one the command line and the tests use.
 
+The MCP server reports `StockSharp.DesktopDriver` as its name and `StockSharp DesktopDriver` as its
+display title. The examples below register it in the client as `desktop-driver`.
+
 It reads the interface rather than the screen. A grid answers with its rows and their values, a chart
 with the points it drew, an order book with its levels - in words that do not change with a theme, a
 font or a language. Pictures are for a person to look at, not for a test to measure.

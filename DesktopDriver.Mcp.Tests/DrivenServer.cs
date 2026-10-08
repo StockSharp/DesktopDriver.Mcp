@@ -35,6 +35,9 @@ public sealed class DrivenServer : IAsyncDisposable
 	/// </summary>
 	public IList<McpClientTool> Tools { get; private set; }
 
+	/// <summary>The identity reported by the server during the MCP handshake.</summary>
+	public Implementation ServerInfo => _client.ServerInfo;
+
 	/// <summary>
 	/// Where this server writes its pictures.
 	/// </summary>

@@ -1,5 +1,6 @@
 namespace StockSharp.DesktopDriver.Mcp;
 
+using System.Reflection;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +27,13 @@ public static class Program
 		builder.Services.AddSingleton<UiSettings>();
 		builder.Services.AddSingleton<UiApplications>();
 		builder.Services
-			.AddMcpServer()
+			.AddMcpServer(options => options.ServerInfo = new()
+			{
+				Name = "StockSharp.DesktopDriver",
+				Title = "StockSharp DesktopDriver",
+				Version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+					?? typeof(Program).Assembly.GetName().Version?.ToString(),
+			})
 			.WithStdioServerTransport()
 			.WithToolsFromAssembly();
 

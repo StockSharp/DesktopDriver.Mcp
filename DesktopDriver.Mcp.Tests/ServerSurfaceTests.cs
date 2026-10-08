@@ -29,6 +29,18 @@ public class ServerSurfaceTests : BaseTestClass
 		"ui_diagnostics",
 	];
 
+	/// <summary>The connected server reports the product identity and display name.</summary>
+	[TestMethod]
+	[Timeout(60000)]
+	public async Task ServerReportsItsStockSharpIdentity()
+	{
+		await using var server = await DrivenServer.StartAsync(Catalogue(), CancellationToken);
+
+		AreEqual("StockSharp.DesktopDriver", server.ServerInfo.Name);
+		AreEqual("StockSharp DesktopDriver", server.ServerInfo.Title);
+		IsFalse(string.IsNullOrWhiteSpace(server.ServerInfo.Version));
+	}
+
 	[TestMethod]
 	public async Task EveryToolTheAgentNeedsIsThere()
 	{
