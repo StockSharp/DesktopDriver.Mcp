@@ -1,5 +1,8 @@
 # StockSharp DesktopDriver
 
+[![MCP on NuGet](https://img.shields.io/nuget/v/StockSharp.DesktopDriver.Mcp?label=MCP)](https://www.nuget.org/packages/StockSharp.DesktopDriver.Mcp)
+[![CLI on NuGet](https://img.shields.io/nuget/v/StockSharp.DesktopDriver.Cli?label=CLI)](https://www.nuget.org/packages/StockSharp.DesktopDriver.Cli)
+
 Drive desktop applications built on Avalonia, WPF or MAUI from tests, from a command line, or from an AI
 agent over MCP.
 
@@ -21,27 +24,38 @@ Pictures are there for a person to look at; tests check what the controls say.
    documents, diagrams. An application registers adapters for its own controls through the same
    interface the standard ones use.
 
-## Packages
+## NuGet packages
+
+Install the CLI or MCP server with the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0):
+
+```sh
+dotnet tool install StockSharp.DesktopDriver.Cli --tool-path tools
+dotnet tool install StockSharp.DesktopDriver.Mcp --tool-path tools
+```
+
+The commands are `tools/desktop-driver` and `tools/desktop-driver-mcp`. To add automation to an
+application, reference the bootstrap package for its toolkit. To drive it from code, use the client,
+runner and testing packages.
 
 | Package | What it is |
 |---|---|
-| `StockSharp.DesktopDriver.Contracts` | The protocol: requests, answers, states, addresses |
-| `StockSharp.DesktopDriver.Runtime` | Reading, identity, revisions and waiting, independent of any toolkit |
-| `StockSharp.DesktopDriver.Host` | The endpoint inside the application, and `UiAutomationLaunch` to read how it was started |
-| `StockSharp.DesktopDriver.Client` | The typed client every runner talks through |
-| `StockSharp.DesktopDriver.Runner` | Starts, finds and reaches applications; the catalogue of what may be started |
-| `StockSharp.DesktopDriver.Testing` | What an MSTest suite needs on top of the runner |
-| `StockSharp.DesktopDriver.Cli` | The command line |
-| `StockSharp.DesktopDriver.Mcp` | The MCP server, see [its README](DesktopDriver.Mcp/README.md) |
-| `StockSharp.DesktopDriver.Avalonia` | Avalonia: reading, input and pictures of the standard controls |
-| `StockSharp.DesktopDriver.Avalonia.ProDataGrid` | Avalonia: the `DataGrid` from ProDataGrid, read as a table |
-| `StockSharp.DesktopDriver.Avalonia.Dock` | Avalonia: a Dock.Avalonia workspace, read as panels and groups |
-| `StockSharp.DesktopDriver.Avalonia.Headless` | Avalonia: input for headless tests |
-| `StockSharp.DesktopDriver.Bootstrap.Avalonia` | Avalonia: one call that makes an application drivable |
-| `StockSharp.DesktopDriver.Wpf` | WPF: reading, input and pictures of the standard controls |
-| `StockSharp.DesktopDriver.Bootstrap.Wpf` | WPF: one call that makes an application drivable |
-| `StockSharp.DesktopDriver.Maui` | MAUI: reading, input and pictures of the standard controls |
-| `StockSharp.DesktopDriver.Bootstrap.Maui` | MAUI on Windows: one call that makes an application drivable |
+| [StockSharp.DesktopDriver.Contracts](https://www.nuget.org/packages/StockSharp.DesktopDriver.Contracts) | The protocol: requests, answers, states, addresses |
+| [StockSharp.DesktopDriver.Runtime](https://www.nuget.org/packages/StockSharp.DesktopDriver.Runtime) | Reading, identity, revisions and waiting, independent of any toolkit |
+| [StockSharp.DesktopDriver.Host](https://www.nuget.org/packages/StockSharp.DesktopDriver.Host) | The endpoint inside the application, and `UiAutomationLaunch` to read how it was started |
+| [StockSharp.DesktopDriver.Client](https://www.nuget.org/packages/StockSharp.DesktopDriver.Client) | The typed client every runner talks through |
+| [StockSharp.DesktopDriver.Runner](https://www.nuget.org/packages/StockSharp.DesktopDriver.Runner) | Starts, finds and reaches applications; the catalogue of what may be started |
+| [StockSharp.DesktopDriver.Testing](https://www.nuget.org/packages/StockSharp.DesktopDriver.Testing) | What an MSTest suite needs on top of the runner |
+| [StockSharp.DesktopDriver.Cli](https://www.nuget.org/packages/StockSharp.DesktopDriver.Cli) | The command line |
+| [StockSharp.DesktopDriver.Mcp](https://www.nuget.org/packages/StockSharp.DesktopDriver.Mcp) | The MCP server, see [its README](DesktopDriver.Mcp/README.md) |
+| [StockSharp.DesktopDriver.Avalonia](https://www.nuget.org/packages/StockSharp.DesktopDriver.Avalonia) | Avalonia: reading, input and pictures of the standard controls |
+| [StockSharp.DesktopDriver.Avalonia.ProDataGrid](https://www.nuget.org/packages/StockSharp.DesktopDriver.Avalonia.ProDataGrid) | Avalonia: the `DataGrid` from ProDataGrid, read as a table |
+| [StockSharp.DesktopDriver.Avalonia.Dock](https://www.nuget.org/packages/StockSharp.DesktopDriver.Avalonia.Dock) | Avalonia: a Dock.Avalonia workspace, read as panels and groups |
+| [StockSharp.DesktopDriver.Avalonia.Headless](https://www.nuget.org/packages/StockSharp.DesktopDriver.Avalonia.Headless) | Avalonia: input for headless tests |
+| [StockSharp.DesktopDriver.Bootstrap.Avalonia](https://www.nuget.org/packages/StockSharp.DesktopDriver.Bootstrap.Avalonia) | Avalonia: one call that makes an application drivable |
+| [StockSharp.DesktopDriver.Wpf](https://www.nuget.org/packages/StockSharp.DesktopDriver.Wpf) | WPF: reading, input and pictures of the standard controls |
+| [StockSharp.DesktopDriver.Bootstrap.Wpf](https://www.nuget.org/packages/StockSharp.DesktopDriver.Bootstrap.Wpf) | WPF: one call that makes an application drivable |
+| [StockSharp.DesktopDriver.Maui](https://www.nuget.org/packages/StockSharp.DesktopDriver.Maui) | MAUI: reading, input and pictures of the standard controls |
+| [StockSharp.DesktopDriver.Bootstrap.Maui](https://www.nuget.org/packages/StockSharp.DesktopDriver.Bootstrap.Maui) | MAUI on Windows: one call that makes an application drivable |
 
 ## Make an application drivable
 
@@ -97,7 +111,6 @@ var windows = await client.GetSurfacesAsync(cancellationToken);
 From a command line, against an application somebody started with `--ui-automation`:
 
 ```sh
-dotnet tool install StockSharp.DesktopDriver.Cli --tool-path tools
 tools/desktop-driver find --endpoint endpoint.json --kind grid
 tools/desktop-driver grid-rows --endpoint endpoint.json --node window:MainWindow/Instruments --limit 5
 ```

@@ -1,5 +1,7 @@
 # StockSharp.DesktopDriver.Mcp
 
+[![MCP on NuGet](https://img.shields.io/nuget/v/StockSharp.DesktopDriver.Mcp?label=MCP)](https://www.nuget.org/packages/StockSharp.DesktopDriver.Mcp)
+
 An MCP server that lets an agent read and drive desktop applications. It speaks MCP on stdio, so a
 client spawns it as a child process; it talks to the applications over the named-pipe protocol in
 `StockSharp.DesktopDriver.Contracts`, the same one the command line and the tests use.
@@ -8,13 +10,10 @@ It reads the interface rather than the screen. A grid answers with its rows and 
 with the points it drew, an order book with its levels - in words that do not change with a theme, a
 font or a language. Pictures are for a person to look at, not for a test to measure.
 
-## Build
+## Install from NuGet
 
-```sh
-dotnet build DesktopDriver.Mcp/DesktopDriver.Mcp.csproj -c Release
-```
-
-Or install the package as a tool, which puts `desktop-driver-mcp` in the folder named:
+Install [StockSharp.DesktopDriver.Mcp](https://www.nuget.org/packages/StockSharp.DesktopDriver.Mcp)
+as a .NET tool, which puts `desktop-driver-mcp` in the folder named:
 
 ```sh
 dotnet tool install StockSharp.DesktopDriver.Mcp --tool-path tools
@@ -22,6 +21,12 @@ dotnet tool install StockSharp.DesktopDriver.Mcp --tool-path tools
 
 The server writes the protocol to stdout and every log line to stderr. Running it by hand is only
 useful with a client attached; on its own it waits for stdin.
+
+## Build from source
+
+```sh
+dotnet build DesktopDriver.Mcp/DesktopDriver.Mcp.csproj -c Release
+```
 
 ## Set it up
 
