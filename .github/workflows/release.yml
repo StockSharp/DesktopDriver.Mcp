@@ -10,7 +10,7 @@ on:
         required: true
         type: string
       dry_run:
-        description: Build, test and validate packages without publishing to NuGet.org or GitHub.
+        description: Verify configured trusted publishing, build, test and validate packages without publishing.
         required: true
         type: boolean
         default: true
@@ -54,6 +54,25 @@ jobs:
           else
             echo "NuGet publishing configuration is available."
           fi
+
+  verify-nuget:
+    name: Verify NuGet trusted publishing
+    if: github.event_name == 'workflow_dispatch' && inputs.dry_run && vars.NUGET_USER != ''
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Verify the NuGet.org policy
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Report successful authentication
+        shell: bash
+        run: echo "NuGet trusted publishing authentication succeeded. No packages were uploaded." >> "$GITHUB_STEP_SUMMARY"
 
   package:
     needs: prepare

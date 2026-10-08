@@ -44,8 +44,9 @@ git push origin v1.0.0
 
 Alternatively, open **Actions → release → Run workflow**, enter a version without `v`, and turn off
 `dry_run` to publish. The manual run creates the tag on the selected commit after the build passes.
-Keep `dry_run` enabled to check a release build without publishing packages or creating a tag or release. A version with a
-prerelease suffix, such as `1.0.0-beta.1`, creates a GitHub prerelease.
+Keep `dry_run` enabled to check a release build and the configured trusted publishing policy without
+publishing packages or creating a tag or release. A version with a prerelease suffix, such as
+`1.0.0-beta.1`, creates a GitHub prerelease.
 
 The publish job uploads all 17 packages to NuGet.org, then attaches them to a GitHub release. GitHub's
 automatic `GITHUB_TOKEN` has write access to repository contents only for that job. A GitHub release
@@ -63,7 +64,7 @@ Configure it once before a real release:
 3. Select the package owner and allow new packages and new versions matching `StockSharp.DesktopDriver.*`.
 4. Set the GitHub repository Actions variable `NUGET_USER` to that NuGet profile's username, not an email
    or an organization name. The `NuGet/login@v1` action exchanges the job's GitHub OIDC identity for a
-   short-lived publishing key. The publish job alone has `id-token: write`.
+   short-lived publishing key. The publish job and the dry-run authentication check have `id-token: write`.
 
 An existing API-key setup can instead provide the GitHub Actions secret `NUGET_API_KEY`, scoped to
 publishing `StockSharp.DesktopDriver.*`. This secret takes precedence over trusted publishing.
@@ -72,5 +73,6 @@ channel and are never passed to the samples, hosts or clients.
 
 A real release checks that one of these configurations is present before building. NuGet.org must
 also accept the credentials or policy when publishing; a GitHub push credential or `GITHUB_TOKEN`
-does not grant that access. `dry_run` needs no NuGet credentials and validates the complete package
-set without uploading it.
+does not grant that access. `dry_run` validates the complete package set without uploading it. If
+`NUGET_USER` is set, it also verifies the trusted publishing policy through `NuGet/login@v1`. Without
+that variable, the authentication check is skipped and no NuGet credentials are needed for a dry run.
