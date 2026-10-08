@@ -1,5 +1,7 @@
 # StockSharp DesktopDriver
 
+<!-- mcp-name: io.github.stocksharp/desktop-driver -->
+
 [![MCP on NuGet](https://img.shields.io/nuget/v/StockSharp.DesktopDriver.Mcp?label=MCP)](https://www.nuget.org/packages/StockSharp.DesktopDriver.Mcp)
 [![CLI on NuGet](https://img.shields.io/nuget/v/StockSharp.DesktopDriver.Cli?label=CLI)](https://www.nuget.org/packages/StockSharp.DesktopDriver.Cli)
 
@@ -36,6 +38,8 @@ dotnet tool install StockSharp.DesktopDriver.Mcp --tool-path tools
 The commands are `tools/desktop-driver` and `tools/desktop-driver-mcp`. To add automation to an
 application, reference the bootstrap package for its toolkit. To drive it from code, use the client,
 runner and testing packages.
+
+For MCP Registry publication and Claude Desktop extensions, see [MCP distribution](docs/distribution.md).
 
 | Package | What it is |
 |---|---|

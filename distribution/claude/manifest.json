@@ -1,0 +1,42 @@
+{
+  "manifest_version": "0.3",
+  "name": "stocksharp-desktop-driver",
+  "display_name": "StockSharp DesktopDriver",
+  "version": "1.0.1",
+  "description": "Inspect controls, capture screenshots and drive Avalonia, WPF and MAUI applications locally.",
+  "long_description": "Requires the .NET 10 SDK on PATH. Applications must integrate DesktopDriver and explicitly enable automation with --ui-automation. The selected catalogue controls which applications may launch. Input into applications with real external connections requires a test profile. Local connections remain restricted to the current OS user.",
+  "author": { "name": "StockSharp", "url": "https://stocksharp.com" },
+  "repository": { "type": "git", "url": "https://github.com/StockSharp/DesktopDriver.Mcp" },
+  "homepage": "https://github.com/StockSharp/DesktopDriver.Mcp",
+  "documentation": "https://github.com/StockSharp/DesktopDriver.Mcp/blob/master/DesktopDriver.Mcp/README.md",
+  "support": "https://github.com/StockSharp/DesktopDriver.Mcp/issues",
+  "license": "LicenseRef-StockSharp",
+  "keywords": ["desktop", "ui-automation", "avalonia", "wpf", "maui", "testing"],
+  "compatibility": { "platforms": ["win32", "darwin", "linux"] },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/StockSharp.DesktopDriver.Mcp.dll",
+    "mcp_config": {
+      "command": "dotnet",
+      "args": ["${__dirname}/server/StockSharp.DesktopDriver.Mcp.dll"],
+      "env": {
+        "STOCKSHARP_UI_CATALOGUE": "${user_config.catalogue}",
+        "STOCKSHARP_UI_ARTIFACTS": "${user_config.artifacts_dir}"
+      }
+    }
+  },
+  "user_config": {
+    "catalogue": {
+      "type": "file",
+      "title": "Application catalogue",
+      "description": "JSON file listing the instrumented applications this server may launch.",
+      "required": true
+    },
+    "artifacts_dir": {
+      "type": "directory",
+      "title": "Screenshots folder",
+      "description": "Folder for screenshots and automation artifacts.",
+      "required": true
+    }
+  }
+}
