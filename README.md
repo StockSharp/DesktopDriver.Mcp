@@ -1,6 +1,6 @@
 # StockSharp DesktopDriver
 
-<!-- mcp-name: io.github.stocksharp/desktop-driver -->
+<!-- mcp-name: io.github.StockSharp/desktop-driver -->
 
 [![MCP on NuGet](https://img.shields.io/nuget/v/StockSharp.DesktopDriver.Mcp?label=MCP)](https://www.nuget.org/packages/StockSharp.DesktopDriver.Mcp)
 [![CLI on NuGet](https://img.shields.io/nuget/v/StockSharp.DesktopDriver.Cli?label=CLI)](https://www.nuget.org/packages/StockSharp.DesktopDriver.Cli)

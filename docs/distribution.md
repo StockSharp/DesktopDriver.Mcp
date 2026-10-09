@@ -1,7 +1,7 @@
 # MCP directories and Claude Desktop bundles
 
 The MCP handshake name is `StockSharp.DesktopDriver`; the display name is `StockSharp DesktopDriver`.
-The official MCP Registry identifier is `io.github.stocksharp/desktop-driver`.
+The official MCP Registry identifier is `io.github.StockSharp/desktop-driver`.
 
 ## Official MCP Registry
 

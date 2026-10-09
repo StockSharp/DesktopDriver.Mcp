@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.stocksharp/desktop-driver",
+  "name": "io.github.StockSharp/desktop-driver",
   "title": "StockSharp DesktopDriver",
   "description": "Inspect and drive Avalonia, WPF and MAUI desktop applications through local MCP.",
   "repository": {
