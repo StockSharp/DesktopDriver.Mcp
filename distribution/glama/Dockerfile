@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 
-RUN dotnet tool install StockSharp.DesktopDriver.Mcp --version 1.0.1 --tool-path /opt/mcp \
+RUN dotnet tool install StockSharp.DesktopDriver.Mcp --version 1.0.0 --tool-path /opt/mcp \
     && mkdir -p /data/artifacts \
     && printf '{"applications":[]}\n' > /data/catalogue.json
 
