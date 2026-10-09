@@ -56,6 +56,9 @@ under **Runs from source**. Upload `distribution/glama/Dockerfile` directly to t
 configuration when Glama requests it. The image installs published NuGet version 1.0.0 with an empty
 application catalogue for MCP introspection. Desktop automation uses the native local tool or bundle.
 
+The root `glama.json` declares the GitHub maintainer. After that file is available on GitHub, sign in
+to Glama with the matching GitHub account and claim the listing to manage its build configuration.
+
 The published 1.0.0 tool reports `StockSharp.DesktopDriver.Mcp` as its handshake name. Version 1.0.1
 carries the explicit name and title listed at the top of this document.
 
