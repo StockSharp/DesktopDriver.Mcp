@@ -15,6 +15,7 @@ using StockSharp.DesktopDriver.Snapshots;
 /// <param name="MaxPixelHeight">The tallest the picture may be.</param>
 /// <param name="Guard">What the caller believed about the node.</param>
 /// <param name="Mask">What to keep out of the picture.</param>
+/// <param name="Highlight">What to draw a frame round.</param>
 /// <remarks>
 /// The kind that was asked for is the kind that is taken, or the request fails: quietly redrawing a
 /// control when the caller asked for the window would answer a question nobody asked.
@@ -24,6 +25,11 @@ using StockSharp.DesktopDriver.Snapshots;
 /// can be pictured without picturing them. A mask naming something that is not there fails the request
 /// rather than being skipped.
 /// </para>
+/// <para>
+/// <see cref="Highlight"/> is for a picture of a large place that is about one thing in it: a page that explains
+/// one command of a ribbon shows the whole ribbon with that command framed. A highlight naming something that is
+/// not there, or not in the picture, fails the request as a mask does.
+/// </para>
 /// </remarks>
 public sealed record UiScreenshotRequest(
 	UiTarget Target,
@@ -32,4 +38,5 @@ public sealed record UiScreenshotRequest(
 	int MaxPixelWidth,
 	int MaxPixelHeight,
 	UiReadGuard Guard,
-	ImmutableArray<UiMask> Mask);
+	ImmutableArray<UiMask> Mask,
+	ImmutableArray<UiHighlight> Highlight);

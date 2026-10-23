@@ -7,6 +7,7 @@ using System.Text;
 using global::Avalonia;
 using global::Avalonia.Automation;
 using global::Avalonia.Controls;
+using global::Avalonia.Controls.Chrome;
 using global::Avalonia.Controls.Primitives;
 using global::Avalonia.VisualTree;
 
@@ -151,7 +152,7 @@ public static class UiAutomationNames
 				}
 			}
 
-			var root = TopLevel.GetTopLevel(control);
+			var root = AvaloniaTopLevels.Of(control);
 
 			if (root is Window || root?.Parent is not Control opener)
 			{
@@ -174,25 +175,57 @@ public static class UiAutomationNames
 
 	private static string GetLocalId(Control control, Control scopeRoot)
 	{
+		if (GetDeclaredId(control) is { } declared)
+			return Qualify(control, scopeRoot, declared);
+
+		// A name a control template gave its own part - PART_ContentPresenter and the like - is carried by
+		// every instance of that template, so on its own it is no address: a walk that had passed the first
+		// would treat the second as somewhere it had been, and everything inside it would vanish from the tree.
+		// It is unique within the control the template belongs to, so that control's address qualifies it.
+		if (!string.IsNullOrEmpty(control.Name) &&
+			control.TemplatedParent is Control owner &&
+			GetLocalId(owner, scopeRoot) is { } ownerId &&
+			!ownerId.StartsWith('~'))
+		{
+			return $"{ownerId}.{control.Name}";
+		}
+
+		return BuildPath(control, scopeRoot);
+	}
+
+	// The automation identifier, or else the name the markup gave - a name a template gave its part is not one.
+	private static string GetDeclaredId(Control control)
+	{
 		var declared = AutomationProperties.GetAutomationId(control);
 
 		if (!string.IsNullOrEmpty(declared))
 			return declared;
 
-		if (!string.IsNullOrEmpty(control.Name))
-		{
-			if (control.TemplatedParent is null)
-				return control.Name;
+		// The frame a window draws itself is built from a template of its own, one to a window, so a name in it is
+		// an address as it stands.
+		return !string.IsNullOrEmpty(control.Name) && control.TemplatedParent is null or WindowDrawnDecorations
+			? control.Name
+			: null;
+	}
 
-			// A name a control template gave its own part - PART_ContentPresenter and the like - is carried by
-			// every instance of that template, so on its own it is no address: a walk that had passed the first
-			// would treat the second as somewhere it had been, and everything inside it would vanish from the tree.
-			// It is unique within the control the template belongs to, so that control's address qualifies it.
-			if (control.TemplatedParent is Control owner && GetLocalId(owner, scopeRoot) is { } ownerId && !ownerId.StartsWith('~'))
-				return $"{ownerId}.{control.Name}";
+	// A control built from markup of its own names its parts there, and a part can carry the name the outer markup
+	// gave the control itself - a picker called SecuritiesGrid holding a table called SecuritiesGrid. The outer name
+	// is what the scope calls the control, so the part inside it is addressed through it.
+	private static string Qualify(Control control, Control scopeRoot, string declared)
+	{
+		if (ReferenceEquals(control, scopeRoot))
+			return declared;
+
+		for (var current = control.GetVisualParent() as Control; current is not null; current = current.GetVisualParent() as Control)
+		{
+			if (GetDeclaredId(current) == declared)
+				return $"{GetLocalId(current, scopeRoot)}.{declared}";
+
+			if (ReferenceEquals(current, scopeRoot))
+				break;
 		}
 
-		return BuildPath(control, scopeRoot);
+		return declared;
 	}
 
 	// The fallback. It is a path rather than a plain index so that two unnamed buttons in different

@@ -86,16 +86,17 @@ public class AvaloniaTreeAdapter(AvaloniaNodeBinder binder)
 			.FirstOrDefault(presenter => presenter.Name == "PART_HeaderPresenter" && presenter.FindAncestorOfType<TreeViewItem>() == entry.Item)
 			?? throw UiErrors.Fail(UiErrorCodes.NotCreated, $"'{key}' has not drawn its row yet.");
 
-		if (controlName is null)
-			return AvaloniaInputTargetResolver.Locate(row, context?.Node, context?.Revisions, $"the row of '{key}'");
+		var (visual, what) = controlName is null
+			? (row, $"the row of '{key}'")
+			: (row
+				.GetVisualDescendants()
+				.OfType<Control>()
+				.FirstOrDefault(candidate => candidate.Name == controlName)
+				?? throw UiErrors.NotFound($"The row of '{key}' holds nothing called '{controlName}'."), $"'{controlName}' of '{key}'");
 
-		var control = row
-			.GetVisualDescendants()
-			.OfType<Control>()
-			.FirstOrDefault(candidate => candidate.Name == controlName)
-			?? throw UiErrors.NotFound($"The row of '{key}' holds nothing called '{controlName}'.");
-
-		return AvaloniaInputTargetResolver.Locate(control, context?.Node, context?.Revisions, $"'{controlName}' of '{key}'");
+		return action is UiEnsureVisibleAction
+			? AvaloniaInputTargetResolver.Placed(visual, context?.Node, context?.Revisions, what)
+			: AvaloniaInputTargetResolver.Locate(visual, context?.Node, context?.Revisions, what);
 	}
 
 	/// <inheritdoc />

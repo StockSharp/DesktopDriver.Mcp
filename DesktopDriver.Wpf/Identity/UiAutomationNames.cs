@@ -193,6 +193,15 @@ public static class UiAutomationNames
 
 	private static string GetLocalId(FrameworkElement element, FrameworkElement scopeRoot)
 	{
+		if (GetDeclaredId(element) is { } declared)
+			return Qualify(element, scopeRoot, declared);
+
+		return BuildPath(element, scopeRoot);
+	}
+
+	// The automation identifier, or else the name the markup gave.
+	private static string GetDeclaredId(FrameworkElement element)
+	{
 		var declared = AutomationProperties.GetAutomationId(element);
 
 		if (!string.IsNullOrEmpty(declared))
@@ -202,10 +211,30 @@ public static class UiAutomationNames
 		// template rather than to this window, and every instance of that template carries it. Two of them
 		// would be one address: a walk that had passed the first would treat the second as somewhere it had
 		// been and never look inside it, and everything in there would vanish from the tree.
-		if (!string.IsNullOrEmpty(element.Name) && element.TemplatedParent is null)
-			return element.Name;
+		return !string.IsNullOrEmpty(element.Name) && element.TemplatedParent is null ? element.Name : null;
+	}
 
-		return BuildPath(element, scopeRoot);
+	// A control built from markup of its own names its parts there, and a part can carry the name the outer markup
+	// gave the control itself - a picker called SecuritiesGrid holding a table called SecuritiesGrid. The outer name
+	// is what the scope calls the control, so the part inside it is addressed through it.
+	private static string Qualify(FrameworkElement element, FrameworkElement scopeRoot, string declared)
+	{
+		if (ReferenceEquals(element, scopeRoot))
+			return declared;
+
+		for (var current = VisualTreeHelper.GetParent(element); current is not null; current = VisualTreeHelper.GetParent(current))
+		{
+			if (current is not FrameworkElement ancestor)
+				continue;
+
+			if (GetDeclaredId(ancestor) == declared)
+				return $"{GetLocalId(ancestor, scopeRoot)}.{declared}";
+
+			if (ReferenceEquals(ancestor, scopeRoot))
+				break;
+		}
+
+		return declared;
 	}
 
 	// The fallback. It is a path rather than a plain index so that two unnamed buttons in different

@@ -40,7 +40,7 @@ public sealed class AvaloniaPresentationReader : IUiPresentationReader
 				UiField<double>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"));
 		}
 
-		var root = TopLevel.GetTopLevel(visual as Control);
+		var root = AvaloniaTopLevels.Of(visual);
 		var control = visual as Control;
 		var attached = root is not null;
 

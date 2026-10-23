@@ -13,6 +13,7 @@ using global::Avalonia;
 using global::Avalonia.Controls;
 using global::Avalonia.Media;
 using global::Avalonia.Media.Imaging;
+using global::Avalonia.Media.Immutable;
 
 using StockSharp.DesktopDriver.Adapters;
 using StockSharp.DesktopDriver.Diagnostics;
@@ -66,6 +67,17 @@ public sealed class AvaloniaScreenshotService(
 				continue;
 			}
 
+			if (entry.Scope == UiMaskScopes.Paths)
+			{
+				if (entry.Part is not null)
+					throw UiErrors.Invalid($"The paths inside {entry.Node} are left out wherever they are drawn, so a part of it means nothing.");
+
+				foreach (var rectangle in PrivateText.Paths(root, control))
+					yield return rectangle;
+
+				continue;
+			}
+
 			var size = control.Bounds.Size;
 
 			if (size.Width <= 0 || size.Height <= 0 || control.TranslatePoint(default, root) is not Point at)
@@ -88,6 +100,50 @@ public sealed class AvaloniaScreenshotService(
 
 			yield return new(new Point(part.X, below), new Size(part.Width, Math.Max(0, whole.Y + whole.Height - below)));
 		}
+	}
+
+	// Where each framed thing sits on the window, in the window's own coordinates. Read before anything is drawn, so
+	// that a frame pointing at nothing, or at something outside the picture, refuses the picture rather than leaves
+	// a page explaining a frame that is not there.
+	private Rect[] Highlighted(TopLevel root, ImmutableArray<UiHighlight> highlight, Rect pictured)
+	{
+		if (highlight.IsDefaultOrEmpty)
+			return [];
+
+		var places = new List<UiRect>();
+
+		foreach (var entry in highlight)
+		{
+			var subject = _registry.Resolve(UiTarget.FromId(entry.Node));
+
+			if (subject.Instance is not Control control)
+				throw UiErrors.Unsupported($"{entry.Node} is not a control a picture can frame.");
+
+			var size = control.Bounds.Size;
+
+			if (size.Width <= 0 || size.Height <= 0 || control.TranslatePoint(default, root) is not Point at)
+				throw Unframed(entry.Node, "it has no place on the window");
+
+			var place = entry.Part is null or UiControlPart ? new Rect(at, size) : Part(subject, entry.Part);
+
+			// A frame round something the picture shows only part of would run outside the picture.
+			if (!pictured.Inflate(1).Contains(place))
+				throw Unframed(entry.Node, "it is not wholly in the picture");
+
+			places.Add(new UiRect(place.X, place.Y, place.Width, place.Height));
+		}
+
+		return [.. UiFrames.Merged(places, _frameGap + _framePen.Thickness).Select(place => new Rect(place.X, place.Y, place.Width, place.Height))];
+	}
+
+	private static UiAutomationException Unframed(UiNodeId node, string why)
+		=> UiErrors.Invalid($"{node} cannot be framed: {why}.");
+
+	// A frame runs round its place a little outside it, so that it covers none of what it points at.
+	private static void Frame(DrawingContext context, IEnumerable<Rect> places)
+	{
+		foreach (var place in places)
+			context.DrawRectangle(null, _framePen, place.Inflate(_frameGap + _framePen.Thickness / 2), _frameRadius, _frameRadius);
 	}
 
 	// Answered by the same adapter that answers where a click lands, so that a part means here what it
@@ -170,12 +226,24 @@ public sealed class AvaloniaScreenshotService(
 		return stream.ToArray();
 	}
 
+	// The red the documentation has always framed things in, standing off what it frames by a little and rounding its
+	// corners, in the window's units.
+	private static readonly ImmutablePen _framePen = new(new ImmutableSolidColorBrush(Color.FromRgb(0xE5, 0x39, 0x35)), 2);
+	private const double _frameGap = 4;
+	private const double _frameRadius = 6;
+
 	private readonly IUiNodeRegistry _registry = registry ?? throw new ArgumentNullException(nameof(registry));
 	private readonly IUiAdapterRegistry _adapters = adapters ?? throw new ArgumentNullException(nameof(adapters));
 	private readonly IUiRevisionTracker _revisions = revisions ?? throw new ArgumentNullException(nameof(revisions));
 	private readonly IUiExecutor _executor = executor ?? throw new ArgumentNullException(nameof(executor));
 	private readonly UiArtifactStore _artifacts = artifacts ?? throw new ArgumentNullException(nameof(artifacts));
 	private readonly Guid _instanceId = instanceId;
+
+	/// <summary>
+	/// What these pictures can do beyond leaving a control out: frame what they point at, and find where a text or a
+	/// local path is drawn.
+	/// </summary>
+	public static ImmutableArray<string> Capabilities { get; } = ["image.highlight", "image.mask.text", "image.mask.paths"];
 
 	/// <summary>
 	/// Takes a picture.
@@ -226,14 +294,22 @@ public sealed class AvaloniaScreenshotService(
 
 		var frame = new Size(width / scaling, height / scaling);
 
+		// What a mask covers or a highlight frames is placed against the window's contents, and the picture starts
+		// at the outside of its frame, so everything moves by the difference between the two.
+		var offset = ContentOffset(window, taken.Origin);
+		var framed = Highlighted(window, request.Highlight, new Rect(window.ClientSize));
+
 		using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), dpi);
 
 		using (var context = bitmap.CreateDrawingContext())
+		{
 			context.DrawImage(picture, new Rect(default, frame));
 
-		// What a mask covers is placed against the window's contents, and the picture starts at the
-		// outside of its frame, so everything covered moves by the difference between the two.
-		var data = Encode(bitmap, Masked(window, request.Mask), ContentOffset(window, taken.Origin), scaling);
+			using (context.PushTransform(Matrix.CreateTranslation(offset.X, offset.Y)))
+				Frame(context, framed);
+		}
+
+		var data = Encode(bitmap, Masked(window, request.Mask), offset, scaling);
 		var id = _artifacts.Add(data, "image/png");
 
 		return new UiScreenshotInfo(
@@ -279,7 +355,7 @@ public sealed class AvaloniaScreenshotService(
 		if (size.Width <= 0 || size.Height <= 0)
 			throw UiErrors.Fail(UiErrorCodes.NotInteractable, "That control has no size to draw.");
 
-		var root = TopLevel.GetTopLevel(control)
+		var root = AvaloniaTopLevels.Of(control)
 			?? throw UiErrors.Fail(UiErrorCodes.NotCreated, "That control is not in a window.");
 
 		if (control.TranslatePoint(default, root) is not Point origin)
@@ -302,6 +378,7 @@ public sealed class AvaloniaScreenshotService(
 		// instead and the control's rectangle cut out of it, which is what is behind the control as well
 		// as what is in it.
 		var frame = root.Bounds.Size;
+		var framed = Highlighted(root, request.Highlight, new Rect(origin, size));
 
 		using var window = new RenderTargetBitmap(
 			new PixelSize((int)Math.Ceiling(frame.Width * scaling), (int)Math.Ceiling(frame.Height * scaling)),
@@ -314,7 +391,10 @@ public sealed class AvaloniaScreenshotService(
 		using (var context = bitmap.CreateDrawingContext())
 		using (context.PushClip(new Rect(0, 0, size.Width, size.Height)))
 		using (context.PushTransform(Matrix.CreateTranslation(-origin.X, -origin.Y)))
+		{
 			context.DrawImage(window, new Rect(default, frame));
+			Frame(context, framed);
+		}
 
 		var data = Encode(bitmap, Masked(root, request.Mask), new(-origin.X, -origin.Y), scaling);
 		var id = _artifacts.Add(data, "image/png");

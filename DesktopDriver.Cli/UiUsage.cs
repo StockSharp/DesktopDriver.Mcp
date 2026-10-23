@@ -40,10 +40,14 @@ internal static class UiUsage
 		  diagnostics    [--after <cursor>] [--limit N] [--node] [--action <id>]
 
 		Driving
-		  click  --node [--button left|middle|right] [--count N] [--part ...]
+		  click  --node [--button left|middle|right] [--count N] [--modifiers shift,control,alt,meta] [--part ...]
 		  type   --node --text <text> [--mode append|replace]
 		  key    --node --key <name> [--modifiers shift,control,alt,meta]
 		  scroll --node [--dx N] [--dy N]
+		  drag   --node [--part ...] --to-part ... - pressed on the part, carried and let go on the
+		         --to- part of the same node, named with the same options behind --to-
+		  hover  --node [--part ...] - the pointer brought onto it and left there, nothing pressed
+		  leave  --node - the pointer taken off the window the node is in
 		  show   --node --part ...
 		  action-status --action <id>
 		  wait   --node (--field <path> --value <v> [--value-kind <k>] [--op <comparison>] | --exists | --missing)
@@ -54,7 +58,9 @@ internal static class UiUsage
 		  --control <name>; --part propertyValue --path <property>; --part propertyValueControl --path <property> --control <name>; --part listItem --index <n>;
 		  --part treeItem --item <key>;
 		  --part treeItemControl --item <key> --control <name>; --part dockTab|dockClose --panel <id>;
-		  --part ribbonItem --item <name>; --part chartAnnotation --annotation <id>.
+		  --part ribbonItem --item <name>; --part chartAnnotation --annotation <id>;
+		  --part chartPrice --area <id> --price <price, with a point>; --part chartOrder|chartOrderCancel --order <id>;
+		  --part chartAreaClose --area <id>, the cross on the header of a pane under the chart.
 
 		  show brings a part onto the screen so that it can be clicked, through the control's own
 		  positioning. A row a thousand down has no visual until then - and a different one afterwards,
@@ -67,6 +73,7 @@ internal static class UiUsage
 		  screenshot --node [--kind controlRender|windowCapture|screenCapture] [--popups]
 		             [--max-width N] [--max-height N] [--out <file>]
 		             [--mask scope/id,scope/grid#column] - blurred before the picture is written
+		             [--highlight scope/id,scope/grid#column] - framed in red, a little outside
 		  artifact   --id <artifactId> --out <file>
 
 		Exit codes

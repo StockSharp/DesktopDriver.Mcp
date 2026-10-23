@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 using global::Avalonia.Controls;
+using global::Avalonia.VisualTree;
 
 using Dock.Avalonia.Controls;
 using Dock.Model.Controls;
@@ -69,17 +70,35 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 		};
 
 		if (action is UiEnsureVisibleAction)
+		{
 			DockParts.Show(host, layout, panelId);
 
-		var visual = part is UiDockClosePart
-			? DockParts.Close(host, layout, panelId)
-			: DockParts.Tab(host, layout, panelId);
+			return part is UiDockClosePart
+				? AvaloniaInputTargetResolver.Placed(DockParts.Close(host, layout, panelId), context?.Node, context?.Revisions, $"close button of '{panelId}'")
+				: AvaloniaInputTargetResolver.Placed(DockParts.Tab(host, layout, panelId), context?.Node, context?.Revisions, $"tab of '{panelId}'");
+		}
+
+		if (part is UiDockClosePart)
+			return AvaloniaInputTargetResolver.Locate(DockParts.Close(host, layout, panelId), context?.Node, context?.Revisions, $"close button of '{panelId}'");
+
+		// A tab carries buttons of its own - help, close - and a short one has one of them at its middle: the tab is pressed
+		// where none of them is. A button that shows the panel's title is the tab itself, as at the edge of a workspace.
+		var strip = DockParts.Tab(host, layout, panelId);
+		var title = (strip.DataContext as IDockable)?.Title;
+
+		bool isCarried(Button button)
+			=> !button.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == title);
+
+		// Its title is where a person presses a tab: on a tab turned along a side edge the middle can be bare.
+		var caption = strip.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(text => text.Text == title && text.IsEffectivelyVisible);
 
 		return AvaloniaInputTargetResolver.Locate(
-			visual,
+			strip,
 			context?.Node,
 			context?.Revisions,
-			part is UiDockClosePart ? $"close button of '{panelId}'" : $"tab of '{panelId}'");
+			$"tab of '{panelId}'",
+			hit => !hit.GetSelfAndVisualAncestors().TakeWhile(visual => !ReferenceEquals(visual, strip)).OfType<Button>().Any(isCarried),
+			caption);
 	}
 
 	/// <inheritdoc />
@@ -238,7 +257,11 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 	{
 		var content = DockVisuals.ContentOf(host, dockable);
 		var reference = content is null ? null : _binder.Bind(content);
-		var selected = parent is IDock group && ReferenceEquals(group.ActiveDockable, dockable);
+
+		// A panel at an edge is in front of nothing but itself: it is the one on show once it has slid out.
+		var selected = IsAtAnEdge(dockable, parent)
+			? content is { IsEffectivelyVisible: true }
+			: parent is IDock group && ReferenceEquals(group.ActiveDockable, dockable);
 
 		return new DockPanelSnapshot(
 			IdOf(dockable),
@@ -270,6 +293,10 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 		Control content,
 		bool selected)
 	{
+		// Collapsed to the strip along its edge until it slides out.
+		if (IsAtAnEdge(dockable, parent))
+			return content is { IsEffectivelyVisible: true } ? DockPanelPresentations.Shown : DockPanelPresentations.AutoHidden;
+
 		if (parent is IDock { VisibleDockables: { } visible } && !visible.Contains(dockable))
 			return DockPanelPresentations.Hidden;
 
@@ -299,6 +326,9 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 	private static IDockable Focused(IDock layout)
 		=> layout is IRootDock root ? root.FocusedDockable : layout?.ActiveDockable;
 
+	private static bool IsAtAnEdge(IDockable dockable, IDockable parent)
+		=> parent is IRootDock root && DockVisuals.Pinned(root).Contains(dockable);
+
 	private static string IdOf(IDockable dockable) => dockable?.Id;
 
 	// Breadth first, so that a layout read with a budget loses the deepest panels rather than a whole
@@ -326,6 +356,14 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 			{
 				foreach (var child in Children(dock))
 					queue.Enqueue((child, dock));
+			}
+
+			// A panel tucked away at an edge belongs to no group: it hangs off the root, in a list of its own for
+			// each edge, and a walk of the groups alone lost it with everything it holds.
+			if (current.Dockable is IRootDock edges)
+			{
+				foreach (var pinned in DockVisuals.Pinned(edges))
+					queue.Enqueue((pinned, edges));
 			}
 		}
 	}

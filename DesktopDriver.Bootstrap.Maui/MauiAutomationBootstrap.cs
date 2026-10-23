@@ -47,6 +47,7 @@ public static class MauiAutomationBootstrap
 			() => new MauiInputDriver(composition.Nodes, executor),
 			new MauiScreenshotService(
 				composition.Nodes, composition.Adapters, composition.Revisions, executor, composition.Artifacts, composition.InstanceId).CaptureAsync,
+			MauiScreenshotService.Capabilities,
 			typeof(Application).Assembly.GetName().Version?.ToString()));
 
 		// Written as soon as the endpoint is listening, which is the only thing the file says: what a runner may

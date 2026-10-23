@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -42,6 +43,11 @@ public sealed class WpfScreenshotService(
 	private readonly IUiExecutor _executor = executor ?? throw new ArgumentNullException(nameof(executor));
 	private readonly UiArtifactStore _artifacts = artifacts ?? throw new ArgumentNullException(nameof(artifacts));
 	private readonly Guid _instanceId = instanceId;
+
+	/// <summary>
+	/// What these pictures can do beyond leaving a control out: frame what they point at.
+	/// </summary>
+	public static ImmutableArray<string> Capabilities { get; } = ["image.highlight"];
 
 	/// <summary>
 	/// Takes a picture.
@@ -90,6 +96,7 @@ public sealed class WpfScreenshotService(
 		// worked out from a border width, because a window that has taken its frame over draws it where it likes.
 		var content = window.PointToScreen(default);
 		var offset = new Vector((content.X - taken.Origin.X) / scaling, (content.Y - taken.Origin.Y) / scaling);
+		var framed = Highlighted(window, request.Highlight, new Rect(window.RenderSize));
 
 		var drawing = new DrawingVisual();
 
@@ -100,6 +107,8 @@ public sealed class WpfScreenshotService(
 
 			foreach (var rectangle in Masked(window, request.Mask))
 				Redact(context, rectangle);
+
+			Frame(context, framed);
 
 			context.Pop();
 		}
@@ -122,7 +131,7 @@ public sealed class WpfScreenshotService(
 		{
 			// Refused rather than skipped: a picture taken without it would carry the very text it names.
 			if (entry.Scope != UiMaskScopes.Node)
-				throw UiErrors.Unsupported($"This backend cannot find where the text of {entry.Node} is drawn.");
+				throw UiErrors.Unsupported($"This backend cannot find where a text is drawn, so it can leave out only {entry.Node} itself.");
 
 			if (!_registry.TryResolve(entry.Node, out var subject) || subject.Instance is not FrameworkElement element)
 				throw UiErrors.Fail(UiErrorCodes.NotFound, $"Nothing to paint over is registered as {entry.Node}.");
@@ -195,6 +204,73 @@ public sealed class WpfScreenshotService(
 		context.DrawRoundedRectangle(_redaction, _redactionEdge, rectangle, 3, 3);
 	}
 
+	// The red the documentation has always framed things in, standing off what it frames by a little and rounding its
+	// corners, in the window's units.
+	private static readonly Pen _framePen = Frozen(new Pen(Frozen(Color.FromRgb(0xE5, 0x39, 0x35)), 2));
+	private const double _frameGap = 4;
+	private const double _frameRadius = 6;
+
+	// Where each framed thing sits on the window, in the window's own coordinates. Read before anything is drawn, so
+	// that a frame pointing at nothing, or at something outside the picture, refuses the picture rather than leaves
+	// a page explaining a frame that is not there.
+	private Rect[] Highlighted(Visual root, ImmutableArray<UiHighlight> highlight, Rect pictured)
+	{
+		if (highlight.IsDefaultOrEmpty)
+			return [];
+
+		var places = new List<UiRect>();
+
+		foreach (var entry in highlight)
+		{
+			if (!_registry.TryResolve(entry.Node, out var subject) || subject.Instance is not FrameworkElement element)
+				throw UiErrors.Fail(UiErrorCodes.NotFound, $"Nothing to frame is registered as {entry.Node}.");
+
+			var size = new Size(element.ActualWidth, element.ActualHeight);
+
+			if (size.Width <= 0 || size.Height <= 0)
+				throw Unframed(entry.Node, "it has no place on the window");
+
+			Rect place;
+
+			if (entry.Part is null or UiControlPart)
+				place = new Rect(element.TransformToAncestor(root).Transform(default), size);
+			else
+			{
+				var part = Part(subject, entry.Part);
+
+				place = new Rect(part.X, part.Y, part.Width, part.Height);
+			}
+
+			var whole = pictured;
+
+			whole.Inflate(1, 1);
+
+			// A frame round something the picture shows only part of would run outside the picture.
+			if (!whole.Contains(place))
+				throw Unframed(entry.Node, "it is not wholly in the picture");
+
+			places.Add(new UiRect(place.X, place.Y, place.Width, place.Height));
+		}
+
+		return [.. UiFrames.Merged(places, _frameGap + _framePen.Thickness).Select(place => new Rect(place.X, place.Y, place.Width, place.Height))];
+	}
+
+	private static UiAutomationException Unframed(UiNodeId node, string why)
+		=> UiErrors.Invalid($"{node} cannot be framed: {why}.");
+
+	// A frame runs round its place a little outside it, so that it covers none of what it points at.
+	private static void Frame(DrawingContext context, IEnumerable<Rect> places)
+	{
+		foreach (var place in places)
+		{
+			var outside = place;
+
+			outside.Inflate(_frameGap + _framePen.Thickness / 2, _frameGap + _framePen.Thickness / 2);
+
+			context.DrawRoundedRectangle(null, _framePen, outside, _frameRadius, _frameRadius);
+		}
+	}
+
 	// Answered by the same adapter that answers where a click lands, so that a part means here what it
 	// means everywhere else.
 	private UiRect Part(UiSubject subject, UiTargetPart part)
@@ -255,6 +331,7 @@ public sealed class WpfScreenshotService(
 			Stretch = Stretch.Fill,
 		};
 
+		var framed = Highlighted(root, request.Highlight, new Rect(origin, size));
 		var drawing = new DrawingVisual();
 
 		using (var context = drawing.RenderOpen())
@@ -268,6 +345,8 @@ public sealed class WpfScreenshotService(
 			// drawn and then removed.
 			foreach (var rectangle in Masked(root, request.Mask))
 				Redact(context, rectangle);
+
+			Frame(context, framed);
 
 			context.Pop();
 			context.Pop();

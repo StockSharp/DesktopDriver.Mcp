@@ -54,9 +54,15 @@ internal static class WindowSurfaceCapture
 		public uint ColorImportant;
 	}
 
+	// Where the window's frame is drawn, without the margin the desktop keeps around it to be grabbed by.
+	private const int _extendedFrameBounds = 9;
+
 	[DllImport("user32.dll", SetLastError = true)]
 	[return: MarshalAs(UnmanagedType.Bool)]
 	private static extern bool GetWindowRect(IntPtr window, out Rectangle rectangle);
+
+	[DllImport("dwmapi.dll")]
+	private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out Rectangle value, int size);
 
 	[DllImport("user32.dll", SetLastError = true)]
 	[return: MarshalAs(UnmanagedType.Bool)]
@@ -157,11 +163,30 @@ internal static class WindowSurfaceCapture
 				for (var index = 3; index < buffer.Length; index += 4)
 					buffer[index] = 0xFF;
 
-				var image = BitmapSource.Create(width, height, dpi, dpi, PixelFormats.Bgra32, null, buffer, stride);
+				// The rectangle a window is given includes the margin the desktop keeps around its frame to be grabbed
+				// by - and, for a maximised window, the part past the edges of the screen. Nothing is drawn there, so the
+				// picture keeps only what the frame encloses.
+				var visible = Visible(handle, rectangle);
+				var visibleWidth = visible.Right - visible.Left;
+				var visibleHeight = visible.Bottom - visible.Top;
+				var visibleStride = visibleWidth * (_bitCount / 8);
+				var cropped = new byte[(long)visibleStride * visibleHeight];
+
+				for (var row = 0; row < visibleHeight; row++)
+				{
+					Buffer.BlockCopy(
+						buffer,
+						(visible.Top - rectangle.Top + row) * stride + (visible.Left - rectangle.Left) * (_bitCount / 8),
+						cropped,
+						row * visibleStride,
+						visibleStride);
+				}
+
+				var image = BitmapSource.Create(visibleWidth, visibleHeight, dpi, dpi, PixelFormats.Bgra32, null, cropped, visibleStride);
 
 				image.Freeze();
 
-				return new(image, new Point(rectangle.Left, rectangle.Top));
+				return new(image, new Point(visible.Left, visible.Top));
 			}
 			finally
 			{
@@ -178,5 +203,23 @@ internal static class WindowSurfaceCapture
 
 			ReleaseDC(IntPtr.Zero, screen);
 		}
+	}
+
+	// The frame the desktop draws, kept within the rectangle the window was given; the whole rectangle when the desktop
+	// does not say, as without composition.
+	private static Rectangle Visible(IntPtr handle, Rectangle given)
+	{
+		if (DwmGetWindowAttribute(handle, _extendedFrameBounds, out var frame, Marshal.SizeOf<Rectangle>()) != 0)
+			return given;
+
+		var visible = new Rectangle
+		{
+			Left = Math.Max(frame.Left, given.Left),
+			Top = Math.Max(frame.Top, given.Top),
+			Right = Math.Min(frame.Right, given.Right),
+			Bottom = Math.Min(frame.Bottom, given.Bottom),
+		};
+
+		return visible.Right > visible.Left && visible.Bottom > visible.Top ? visible : given;
 	}
 }

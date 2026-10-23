@@ -25,6 +25,19 @@ public class NamesTests : BaseTestClass
 	}
 
 	[TestMethod]
+	public void APartNamedLikeTheElementItSitsInIsAddressedThroughIt()
+	{
+		// The name the page gave the view stays the view's address; one address cannot mean the part as well.
+		var inner = new Label { AutomationId = "Rows" };
+		var outer = new ContentView { AutomationId = "Rows", Content = inner };
+
+		_ = new Window(new ContentPage { Content = outer });
+
+		AreEqual(new UiNodeId("window:Window", "Rows"), UiAutomationNames.GetNodeId(outer));
+		AreEqual(new UiNodeId("window:Window", "Rows.Rows"), UiAutomationNames.GetNodeId(inner));
+	}
+
+	[TestMethod]
 	public void ANamedWindowIsASurfaceOfThatName()
 	{
 		var window = new Window(new ContentPage()) { AutomationId = "Main" };

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using StockSharp.DesktopDriver.Diagnostics;
+using StockSharp.DesktopDriver.Identity;
 using StockSharp.DesktopDriver.Input;
 
 /// <summary>
@@ -34,6 +35,18 @@ public interface IUiInputDriver
 	/// own input is not offered an action this answers for.
 	/// </remarks>
 	UiError Refusal { get; }
+
+	/// <summary>
+	/// Completes once the window the target is in has drawn what it has laid out.
+	/// </summary>
+	/// <param name="target">What the action is aimed at.</param>
+	/// <param name="cancellationToken">Cancellation.</param>
+	/// <returns>A task that completes when the screen shows the controls where they are laid out.</returns>
+	/// <remarks>
+	/// Where an action lands is worked out from where the controls are laid out, and the window delivers it to what it
+	/// has drawn there. A toolkit that finds what is under a point from its laid-out controls has nothing to wait for.
+	/// </remarks>
+	Task DrawnAsync(UiTarget target, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Sends one action.

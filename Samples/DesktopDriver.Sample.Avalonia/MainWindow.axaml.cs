@@ -46,4 +46,7 @@ public partial class MainWindow : Window
 		_instruments.Add(new(symbol.ToUpperInvariant(), "NASDAQ", 0m, 0));
 		SymbolBox.Text = string.Empty;
 	}
+
+	private async void OnDetails(object sender, RoutedEventArgs e)
+		=> await new DetailsWindow().ShowDialog(this);
 }

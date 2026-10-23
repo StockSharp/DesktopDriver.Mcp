@@ -24,7 +24,7 @@ public class ActionJournalTests : BaseTestClass
 			id,
 			UiTarget.FromId(new UiNodeId("panel:orders", "orders-grid")),
 			new UiGridHeaderPart(columnId),
-			new UiClickAction(UiPointerButtons.Left, 1),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 			null,
 			TimeSpan.FromSeconds(10));
 

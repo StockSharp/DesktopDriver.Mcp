@@ -62,6 +62,11 @@ public sealed class MauiScreenshotService(
 	private readonly Guid _instanceId = instanceId;
 
 	/// <summary>
+	/// What these pictures can do beyond leaving a control out: nothing - they frame nothing and find no text.
+	/// </summary>
+	public static ImmutableArray<string> Capabilities { get; } = [];
+
+	/// <summary>
 	/// Takes a picture.
 	/// </summary>
 	/// <param name="request">What to draw.</param>
@@ -76,6 +81,11 @@ public sealed class MauiScreenshotService(
 			throw UiErrors.Unsupported(
 				$"This backend draws the element itself; it cannot produce a {request.CaptureKind}.");
 		}
+
+		// Refused rather than skipped: a page that explains the framed element would be explaining a picture without
+		// the frame.
+		if (!request.Highlight.IsDefaultOrEmpty)
+			throw UiErrors.Unsupported("This backend draws no frames round what a picture points at.");
 
 		return _executor.InvokeAsync(() => CaptureAsync(request), cancellationToken);
 	}
@@ -171,7 +181,7 @@ public sealed class MauiScreenshotService(
 		{
 			// Refused rather than skipped: a picture taken without it would carry the very text it names.
 			if (entry.Scope != UiMaskScopes.Node)
-				throw UiErrors.Unsupported($"This backend cannot find where the text of {entry.Node} is drawn.");
+				throw UiErrors.Unsupported($"This backend cannot find where a text is drawn, so it can leave out only {entry.Node} itself.");
 
 			if (!_registry.TryResolve(entry.Node, out var subject) || subject.Instance is not Element element)
 				throw UiErrors.Fail(UiErrorCodes.NotFound, $"Nothing to paint over is registered as {entry.Node}.");

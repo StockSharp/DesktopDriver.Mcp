@@ -50,6 +50,47 @@ public class SnapshotSchemaTests : BaseTestClass
 	}
 
 	[TestMethod]
+	public void AChartStateComesBackWithTheOrdersItShows()
+	{
+		var state = new ChartState(
+			UiField<string>.Known("BTCUSDT@BBITLIN"),
+			UiField<string>.Known("00:01:00"),
+			UiField<long>.Known(2),
+			[],
+			[],
+			[],
+			[],
+			[
+				new ChartOrderSnapshot(
+					"1234567",
+					"Area0",
+					ChartOrderSides.Buy,
+					60123.4m,
+					0.001m,
+					UiField<UiRect>.Known(new UiRect(10, 200, 80, 18))),
+				new ChartOrderSnapshot(
+					"1234568",
+					"Area0",
+					ChartOrderSides.Sell,
+					99000m,
+					0.002m,
+					UiField<UiRect>.Unavailable(UiUnavailableReasons.NotCreated, "Not drawn yet.")),
+			],
+			UiSelectionSummary.Empty);
+
+		var json = UiJson.Write<UiState>(state);
+		var restored = (ChartState)UiJson.Read<UiState>(json);
+
+		AreEqual(json, UiJson.Write<UiState>(restored));
+		AreEqual(2, restored.Orders.Length);
+		AreEqual(ChartOrderSides.Buy, restored.Orders[0].Side);
+		AreEqual(60123.4m, restored.Orders[0].Price);
+		AreEqual(0.001m, restored.Orders[0].Balance);
+		AreEqual("Area0", restored.Orders[0].PlotAreaId);
+		AreEqual(ChartOrderSides.Sell, restored.Orders[1].Side);
+	}
+
+	[TestMethod]
 	public void AStateShapeThisVersionDoesNotKnowIsRefused()
 	{
 		Throws<JsonException>(() => UiJson.Read<UiState>("{\"kind\":\"someFutureState\"}"));

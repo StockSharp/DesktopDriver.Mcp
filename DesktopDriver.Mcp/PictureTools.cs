@@ -3,6 +3,7 @@ namespace StockSharp.DesktopDriver.Mcp;
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,6 +11,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 using StockSharp.DesktopDriver.Diagnostics;
+using StockSharp.DesktopDriver.Input;
 using StockSharp.DesktopDriver.Runner;
 
 /// <summary>
@@ -26,6 +28,11 @@ using StockSharp.DesktopDriver.Runner;
 [McpServerToolType]
 public static class PictureTools
 {
+	private const string HighlightDescription =
+		"What to frame in red, a little outside it, for a picture of a large place that is about one thing in it: " +
+		"nodes as scope/identifier, separated by commas; scope/identifier#column frames the heading of that column " +
+		"of a table.";
+
 	[McpServerTool(Name = "ui_screenshot", Title = "Take a picture", ReadOnly = true)]
 	[Description(
 		"Takes a picture of a node and writes it to a file, answering with the file's path and the " +
@@ -39,12 +46,13 @@ public static class PictureTools
 		[Description("controlRender, windowCapture or screenCapture; controlRender by default.")] string captureKind = null,
 		[Description("Refuse rather than take a picture wider than this, in pixels.")] int maxPixelWidth = 0,
 		[Description("Refuse rather than take a picture taller than this, in pixels.")] int maxPixelHeight = 0,
+		[Description(HighlightDescription)] string highlight = null,
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(applications);
 		ArgumentNullException.ThrowIfNull(settings);
 
-		var request = Request(node, captureKind, maxPixelWidth, maxPixelHeight);
+		var request = Request(node, captureKind, maxPixelWidth, maxPixelHeight, highlight);
 
 		return applications.AskAsync(instance, async client =>
 		{
@@ -69,11 +77,12 @@ public static class PictureTools
 		[Description("controlRender, windowCapture or screenCapture; controlRender by default.")] string captureKind = null,
 		[Description("Refuse rather than take a picture wider than this, in pixels.")] int maxPixelWidth = 0,
 		[Description("Refuse rather than take a picture taller than this, in pixels.")] int maxPixelHeight = 0,
+		[Description(HighlightDescription)] string highlight = null,
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(applications);
 
-		var request = Request(node, captureKind, maxPixelWidth, maxPixelHeight);
+		var request = Request(node, captureKind, maxPixelWidth, maxPixelHeight, highlight);
 
 		return applications.AskAsync(instance, async client =>
 		{
@@ -88,7 +97,8 @@ public static class PictureTools
 		string node,
 		string captureKind,
 		int maxPixelWidth,
-		int maxPixelHeight)
+		int maxPixelHeight,
+		string highlight)
 		=> new(
 			UiAnswers.Node(node),
 			string.IsNullOrEmpty(captureKind) ? UiCaptureKinds.ControlRender : captureKind,
@@ -96,5 +106,17 @@ public static class PictureTools
 			maxPixelWidth > 0 ? maxPixelWidth : 0,
 			maxPixelHeight > 0 ? maxPixelHeight : 0,
 			null,
-			[]);
+			[],
+			[.. (highlight ?? string.Empty)
+				.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+				.Select(Highlight)]);
+
+	private static UiHighlight Highlight(string text)
+	{
+		var hash = text.IndexOf('#');
+
+		return hash < 0
+			? new(UiAnswers.NodeId(text), null)
+			: new(UiAnswers.NodeId(text[..hash]), new UiGridHeaderPart(text[(hash + 1)..]));
+	}
 }

@@ -148,6 +148,7 @@ public class AvaloniaControlAdapter(AvaloniaNodeBinder binder) : IUiSnapshotAdap
 		{
 			TextBox box => UiField<string>.Known(box.Text ?? string.Empty),
 			TextBlock block => UiField<string>.Known(block.Text ?? string.Empty),
+			NumericUpDown number => UiField<string>.Known(number.Text ?? string.Empty),
 			Window window => UiField<string>.Known(window.Title ?? string.Empty),
 			ContentControl content => content.Content is string text
 				? UiField<string>.Known(text)
@@ -167,6 +168,8 @@ public class AvaloniaControlAdapter(AvaloniaNodeBinder binder) : IUiSnapshotAdap
 		{
 			TextBox box => UiField<UiValue>.Known(new UiStringValue(box.Text ?? string.Empty)),
 			RangeBase range => UiField<UiValue>.Known(new UiDoubleValue(range.Value)),
+			// A field left empty holds no number, which is not the number nought.
+			NumericUpDown number => UiField<UiValue>.Known(number.Value is { } value ? new UiDecimalValue(value) : UiNullValue.Instance),
 			ToggleButton toggle => UiField<UiValue>.Known(toggle.IsChecked is bool flag
 				? new UiBooleanValue(flag)
 				: UiNullValue.Instance),

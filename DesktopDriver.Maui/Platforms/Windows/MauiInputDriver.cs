@@ -53,6 +53,26 @@ public sealed class MauiInputDriver(IUiNodeRegistry registry, MauiUiExecutor exe
 	public UiError Refusal => null;
 
 	/// <inheritdoc />
+	/// <remarks>
+	/// WinUI answers what is under a point from its laid-out elements, and the driver's work can run ahead of the layout
+	/// it has pending, so that layout is done first.
+	/// </remarks>
+	public Task DrawnAsync(UiTarget target, CancellationToken cancellationToken)
+	{
+		ArgumentNullException.ThrowIfNull(target);
+
+		return _executor.InvokeAsync(
+			() =>
+			{
+				if (_registry.Resolve(target).Instance is Element element)
+					MauiPlatform.ViewOf(element)?.UpdateLayout();
+
+				return true;
+			},
+			cancellationToken);
+	}
+
+	/// <inheritdoc />
 	public Task<UiActionReceipt> ExecuteAsync(
 		UiInputRequest request,
 		UiResolvedInputTarget resolvedTarget,
@@ -97,6 +117,10 @@ public sealed class MauiInputDriver(IUiNodeRegistry registry, MauiUiExecutor exe
 			{
 				if (click.Button == UiPointerButtons.Middle)
 					throw UiErrors.Unsupported("Nothing in a MAUI application answers the middle button.");
+
+				// A WinUI control asks the keyboard itself which keys are down, and nothing raised here can hold one.
+				if (click.Modifiers != UiKeyModifiers.None)
+					throw UiErrors.Unsupported("A MAUI application reads the keys held from the keyboard itself, so a click with keys held cannot be sent into the window.");
 
 				var ceiling = Aimed(request.Part, MauiPlatform.ViewOf(element), under, MauiPlatform.RootOf(window), resolvedTarget);
 

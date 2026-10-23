@@ -94,6 +94,7 @@ public class ShowingTests : BaseTestClass
 			[],
 			[],
 			[],
+			[],
 			UiSelectionSummary.Empty));
 
 	private static UiNodeSnapshot Panel(string id) => Node(id, "panel", null);

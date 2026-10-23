@@ -36,6 +36,7 @@ public class InputPolicyTests : BaseTestClass
 			Mock.Of<IUiInputTargetResolver>(),
 			() => throw new InvalidOperationException("An unsafe run must not create an input backend."),
 			null,
+			[],
 			"test"));
 		await using var host = opened.Host;
 		await using var client = await UiAutomationClient.ConnectAsync(
@@ -51,10 +52,38 @@ public class InputPolicyTests : BaseTestClass
 			Guid.NewGuid(),
 			UiTarget.FromId(new UiNodeId("window:test", "unresolved")),
 			UiControlPart.Instance,
-			new UiClickAction(UiPointerButtons.Left, 1),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 			null,
 			TimeSpan.FromSeconds(5)), CancellationToken.None));
 
 		AreEqual(UiErrorCodes.InputUnavailable, error.Error.Code);
+	}
+
+	[TestMethod]
+	[Timeout(60000)]
+	public async Task ARunWhoseInputIsRefusedStillSaysWhatItsPicturesCanDo()
+	{
+		// A picture is a read, taken whatever the profile: a caller that has to keep a path out of one asks the session
+		// whether the toolkit can find the paths it draws.
+		var startup = UiAutomationStartup.For(
+			"tests.pictures", "1.0", "fixture", hasLiveOutsideWorld: true, isTestProfile: false);
+		var opened = new UiAutomationComposition().Open(startup, new UiToolkitParts(
+			Mock.Of<IUiExecutor>(),
+			Mock.Of<IUiRootSource>(),
+			Mock.Of<IUiPresentationReader>(),
+			Mock.Of<IUiInputTargetResolver>(),
+			() => throw new InvalidOperationException("An unsafe run must not create an input backend."),
+			null,
+			["image.mask.paths"],
+			"test"));
+		await using var host = opened.Host;
+		await using var client = await UiAutomationClient.ConnectAsync(
+			opened.Endpoint, startup.AppId, TimeSpan.FromSeconds(10), CancellationToken.None);
+
+		var session = await client.GetSessionAsync(CancellationToken.None);
+
+		AreEqual("none", session.InputBackend);
+		AreEqual(1, session.Capabilities.Length);
+		AreEqual("image.mask.paths", session.Capabilities[0]);
 	}
 }

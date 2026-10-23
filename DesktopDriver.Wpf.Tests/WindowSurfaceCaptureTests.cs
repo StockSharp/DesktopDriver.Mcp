@@ -1,8 +1,10 @@
 namespace StockSharp.DesktopDriver.Tests.Wpf;
 
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -23,7 +25,21 @@ using StockSharp.DesktopDriver.Wpf;
 [TestClass]
 public class WindowSurfaceCaptureTests : BaseTestClass
 {
+	private const int _extendedFrameBounds = 9;
+
 	private static readonly Color _ground = Color.FromRgb(0x12, 0x9A, 0x3B);
+
+	[StructLayout(LayoutKind.Sequential)]
+	private struct FrameRectangle
+	{
+		public int Left;
+		public int Top;
+		public int Right;
+		public int Bottom;
+	}
+
+	[DllImport("dwmapi.dll")]
+	private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out FrameRectangle value, int size);
 
 	[STATestMethod]
 	public void AWindowIsPhotographedWithItsFrame()
@@ -48,8 +64,11 @@ public class WindowSurfaceCaptureTests : BaseTestClass
 			var scaling = VisualTreeHelper.GetDpi(window).DpiScaleX;
 			var picture = Photographed(window, scaling);
 
-			IsTrue(Math.Abs(picture.PixelWidth - window.ActualWidth * scaling) <= 1, $"{picture.PixelWidth} pixels wide, the window is {window.ActualWidth * scaling}.");
-			IsTrue(Math.Abs(picture.PixelHeight - window.ActualHeight * scaling) <= 1, $"{picture.PixelHeight} pixels tall, the window is {window.ActualHeight * scaling}.");
+			// The frame as the desktop draws it, without the margin around it the window is grabbed by.
+			AreEqual(0, DwmGetWindowAttribute(new WindowInteropHelper(window).Handle, _extendedFrameBounds, out var frame, Marshal.SizeOf<FrameRectangle>()));
+
+			AreEqual(frame.Right - frame.Left, picture.PixelWidth, "The picture is not as wide as the frame of the window.");
+			AreEqual(frame.Bottom - frame.Top, picture.PixelHeight, "The picture is not as tall as the frame of the window.");
 
 			AreEqual(_ground, PixelAt(picture, picture.PixelWidth / 2, picture.PixelHeight / 2));
 			AreNotEqual(_ground, PixelAt(picture, picture.PixelWidth / 2, (int)(8 * scaling)), "The title bar is not in the picture.");

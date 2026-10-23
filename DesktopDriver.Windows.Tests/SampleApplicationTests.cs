@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 using Ecng.UnitTesting;
@@ -28,6 +29,21 @@ using StockSharp.DesktopDriver.Waiting;
 [DoNotParallelize]
 public class SampleApplicationTests : BaseTestClass
 {
+	// Where the desktop draws the frame of a window, which is where a person sees the window end.
+	private const int _extendedFrameBounds = 9;
+
+	[StructLayout(LayoutKind.Sequential)]
+	private struct FrameRectangle
+	{
+		public int Left;
+		public int Top;
+		public int Right;
+		public int Bottom;
+	}
+
+	[DllImport("dwmapi.dll")]
+	private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out FrameRectangle value, int size);
+
 	[TestMethod]
 	[DataRow("Wpf", "desktopdriver.sample.wpf", "wpf.synthetic")]
 	[DataRow("Maui", "desktopdriver.sample.maui.windows", "maui.windows")]
@@ -53,12 +69,12 @@ public class SampleApplicationTests : BaseTestClass
 		await WaitAsync(client, input.Node.Id, "state.text", new UiStringValue("Hello from the runner"));
 
 		var apply = await ReadyAsync(client, "ApplyButton");
-		await SendAsync(client, apply.Node.Id, new UiClickAction(UiPointerButtons.Left, 1));
+		await SendAsync(client, apply.Node.Id, new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None));
 		var result = await ReadyAsync(client, "ResultText");
 		await WaitAsync(client, result.Node.Id, "state.text", new UiStringValue("Applied: Hello from the runner"));
 
 		var toggle = await ReadyAsync(client, "EnabledToggle");
-		await SendAsync(client, toggle.Node.Id, new UiClickAction(UiPointerButtons.Left, 1));
+		await SendAsync(client, toggle.Node.Id, new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None));
 		await WaitAsync(client, toggle.Node.Id, "state.isChecked", new UiBooleanValue(true));
 	}
 
@@ -74,7 +90,7 @@ public class SampleApplicationTests : BaseTestClass
 		var surface = (await client.GetSurfacesAsync(CancellationToken)).Single(item => item.SurfaceId == "window:MainWindow");
 		var target = UiTarget.FromId(surface.Root.Id);
 
-		var request = new UiScreenshotRequest(target, UiCaptureKinds.ControlRender, false, 4096, 4096, null, []);
+		var request = new UiScreenshotRequest(target, UiCaptureKinds.ControlRender, false, 4096, 4096, null, [], []);
 		var picture = await client.CaptureScreenshotAsync(request, CancellationToken);
 		await AssertPngAsync(client, picture, UiCaptureKinds.ControlRender);
 
@@ -94,6 +110,65 @@ public class SampleApplicationTests : BaseTestClass
 			{
 				AreEqual(UiErrorCodes.UnsupportedCapability, error.Error.Code);
 			}
+		}
+	}
+
+	/// <summary>
+	/// A photographed window ends where its frame does. The rectangle the desktop gives a window takes in the margin it
+	/// keeps around the frame to be grabbed by, which nothing draws: a picture of all of it has a black border.
+	/// </summary>
+	[TestMethod]
+	[DataRow("Wpf", "desktopdriver.sample.wpf", "InputText")]
+	[DataRow("Avalonia", "desktopdriver.sample", "SymbolBox")]
+	[Timeout(180000)]
+	public async Task APhotographedWindowEndsAtItsFrame(string toolkit, string appId, string ready)
+	{
+		await using var app = await StartAsync(toolkit);
+		await using var client = await app.ConnectAsync(appId, CancellationToken);
+		await ReadyAsync(client, ready);
+
+		var surface = (await client.GetSurfacesAsync(CancellationToken)).Single(item => item.SurfaceId.StartsWith("window:", StringComparison.Ordinal));
+		var picture = await client.CaptureScreenshotAsync(
+			new UiScreenshotRequest(UiTarget.FromId(surface.Root.Id), UiCaptureKinds.WindowCapture, false, 4096, 4096, null, [], []),
+			CancellationToken);
+
+		using var process = Process.GetProcessById(app.Endpoint.ProcessId);
+
+		AreEqual(0, DwmGetWindowAttribute(process.MainWindowHandle, _extendedFrameBounds, out var frame, Marshal.SizeOf<FrameRectangle>()),
+			"The desktop would not say where the frame of the window is.");
+
+		AreEqual(frame.Right - frame.Left, picture.PixelWidth, "The picture is not as wide as the frame of the window.");
+		AreEqual(frame.Bottom - frame.Top, picture.PixelHeight, "The picture is not as tall as the frame of the window.");
+	}
+
+	/// <summary>
+	/// The title bar a window draws itself is the window's: its buttons are found among the window's controls, and the
+	/// one that closes it closes it - the way a person closes a window that has no button of its own for that.
+	/// </summary>
+	[TestMethod]
+	[Timeout(180000)]
+	public async Task TheTitleBarAWindowDrawsItselfIsPartOfTheWindow()
+	{
+		await using var app = await StartAsync("Avalonia");
+		await using var client = await app.ConnectAsync("desktopdriver.sample", CancellationToken);
+
+		var details = await ReadyAsync(client, "DetailsButton");
+		await SendAsync(client, details.Node.Id, new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None));
+
+		// The title bar Avalonia draws names its buttons for automation itself.
+		var close = await ReadyAsync(client, "Close");
+		AreEqual("window:DetailsWindow", close.Node.Id.ScopeId);
+
+		await SendAsync(client, close.Node.Id, new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None));
+
+		var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+
+		while ((await client.GetSurfacesAsync(CancellationToken)).Any(surface => surface.SurfaceId == "window:DetailsWindow"))
+		{
+			if (DateTime.UtcNow >= deadline)
+				Fail("The window is still open after its close button was pressed.");
+
+			await Task.Delay(100, CancellationToken);
 		}
 	}
 
@@ -145,6 +220,49 @@ public class SampleApplicationTests : BaseTestClass
 
 			File.Delete(endpointFile);
 		}
+	}
+
+	/// <summary>
+	/// A toolkit whose controls ask the devices themselves which keys are held and which button is down refuses a click
+	/// with keys held and a drag, rather than sending a plain click in their place.
+	/// </summary>
+	/// <remarks>
+	/// A click with Ctrl on a chart places an order where a plain one only moves the crosshair; answering one with the
+	/// other would make a case pass that never did what it says.
+	/// </remarks>
+	[TestMethod]
+	[DataRow("Wpf", "desktopdriver.sample.wpf")]
+	[DataRow("Maui", "desktopdriver.sample.maui.windows")]
+	[Timeout(180000)]
+	public async Task AClickWithKeysHeldAndADragAreRefusedWhereTheDevicesAreAsked(string toolkit, string appId)
+	{
+		await using var app = await StartAsync(toolkit);
+		await using var client = await app.ConnectAsync(appId, CancellationToken);
+
+		var input = await ReadyAsync(client, "InputText");
+
+		await SendAsync(client, input.Node.Id, new UiTextAction("Typed before", UiTextModes.Replace));
+
+		var apply = await ReadyAsync(client, "ApplyButton");
+
+		var withKeys = await ThrowsAsync<UiAutomationException>(() => client.ExecuteInputAsync(
+			new UiInputRequest(Guid.NewGuid(), UiTarget.FromId(apply.Node.Id), UiControlPart.Instance,
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.Control), null, TimeSpan.FromSeconds(15)),
+			CancellationToken));
+
+		AreEqual(UiErrorCodes.UnsupportedCapability, withKeys.Error.Code);
+
+		var drag = await ThrowsAsync<UiAutomationException>(() => client.ExecuteInputAsync(
+			new UiInputRequest(Guid.NewGuid(), UiTarget.FromId(apply.Node.Id), UiControlPart.Instance,
+				new UiDragAction(UiControlPart.Instance), null, TimeSpan.FromSeconds(15)),
+			CancellationToken));
+
+		AreEqual(UiErrorCodes.UnsupportedCapability, drag.Error.Code);
+
+		// Neither went in as a plain click: the button that applies the text was not pressed.
+		var result = await ReadyAsync(client, "ResultText");
+
+		AreNotEqual("Applied: Typed before", ((UiKnown<string>)((BasicState)result.State).Text).Value);
 	}
 
 	private Task<DrivenApplication> StartAsync(string toolkit)

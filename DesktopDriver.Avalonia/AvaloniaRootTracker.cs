@@ -115,7 +115,7 @@ public sealed class AvaloniaRootTracker(AvaloniaNodeBinder binder) : IUiRootSour
 
 	private static IEnumerable<(TopLevel Popup, Control Opener)> PopupsOf(TopLevel root)
 	{
-		foreach (var control in root.GetVisualDescendants().OfType<Control>())
+		foreach (var control in AvaloniaTopLevels.VisualsOf(root).OfType<Control>())
 		{
 			// Found through the content rather than through the popup's host, which the library keeps to
 			// itself. A popup drawn inside its own window comes back as a surface of its own; one drawn in

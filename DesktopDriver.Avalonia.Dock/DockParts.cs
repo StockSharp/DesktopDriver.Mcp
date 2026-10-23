@@ -8,6 +8,8 @@ using global::Avalonia;
 using global::Avalonia.Controls;
 using global::Avalonia.VisualTree;
 
+using Dock.Avalonia.Controls;
+using Dock.Model.Controls;
 using Dock.Model.Core;
 
 using StockSharp.DesktopDriver.Diagnostics;
@@ -36,7 +38,7 @@ internal static class DockParts
 
 		var tab = host.GetVisualDescendants()
 			.OfType<Control>()
-			.FirstOrDefault(item => ReferenceEquals(item.DataContext, dockable) && IsInAStrip(item));
+			.FirstOrDefault(item => ReferenceEquals(item.DataContext, dockable) && DockVisuals.IsInAStrip(item));
 
 		return tab ?? throw UiErrors.Fail(
 			UiErrorCodes.NotCreated,
@@ -53,17 +55,32 @@ internal static class DockParts
 	/// <returns>The button.</returns>
 	public static Control Close(Visual host, IDock layout, string panelId)
 	{
-		var tab = Tab(host, layout, panelId);
+		var dockable = Dockable(layout, panelId);
 
-		var button = tab.GetVisualDescendants()
-			.OfType<Button>()
-			.FirstOrDefault(candidate => candidate.Name == "PART_CloseButton" && candidate.IsEffectivelyVisible);
+		var onTab = host.GetVisualDescendants()
+			.OfType<Control>()
+			.Where(item => ReferenceEquals(item.DataContext, dockable) && DockVisuals.IsInAStrip(item))
+			.SelectMany(tab => tab.GetVisualDescendants().OfType<Button>())
+			.FirstOrDefault(IsCloseButton);
 
-		return button ?? throw UiErrors.Fail(
+		// A tool alone in its group shows no tab; the button on the caption over it closes whichever panel of the group
+		// is in front, so it is this panel's only while this one is.
+		var onCaption = onTab is null && dockable.Owner is IDock { ActiveDockable: var active } group && ReferenceEquals(active, dockable)
+			? host.GetVisualDescendants()
+				.OfType<ToolChromeControl>()
+				.Where(chrome => ReferenceEquals(chrome.DataContext, group))
+				.SelectMany(chrome => chrome.GetVisualDescendants().OfType<Button>())
+				.FirstOrDefault(IsCloseButton)
+			: null;
+
+		return onTab ?? onCaption ?? throw UiErrors.Fail(
 			UiErrorCodes.NotInteractable,
 			$"'{panelId}' shows no close button: the panel cannot be closed, or its button appears only " +
 			"while the pointer is over the tab.");
 	}
+
+	private static bool IsCloseButton(Button button)
+		=> button.Name == "PART_CloseButton" && button.IsEffectivelyVisible;
 
 	/// <summary>
 	/// Brings a panel's tab into the strip's visible part.
@@ -79,20 +96,6 @@ internal static class DockParts
 
 		if (host is Control control)
 			control.UpdateLayout();
-	}
-
-	// A document tab and a tool tab are different controls with different base types, and both of them
-	// carry the panel as their data - as does the content that panel is drawn in. What tells the tab from
-	// the content is the strip it sits in, which is the one thing every kind of tab has in common.
-	private static bool IsInAStrip(Visual item)
-	{
-		for (var current = item.GetVisualParent(); current is not null; current = current.GetVisualParent())
-		{
-			if (current.GetType().Name.EndsWith("TabStrip", StringComparison.Ordinal))
-				return true;
-		}
-
-		return false;
 	}
 
 	private static IDockable Dockable(IDock layout, string panelId)
@@ -119,6 +122,13 @@ internal static class DockParts
 			{
 				foreach (var child in children)
 					queue.Enqueue(child);
+			}
+
+			// A panel tucked away at an edge is pressed by its button on that edge.
+			if (current is IRootDock root)
+			{
+				foreach (var pinned in DockVisuals.Pinned(root))
+					queue.Enqueue(pinned);
 			}
 		}
 

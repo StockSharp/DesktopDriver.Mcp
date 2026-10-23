@@ -2,6 +2,7 @@ namespace StockSharp.DesktopDriver.Avalonia;
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 using global::Avalonia;
 using global::Avalonia.Controls;
@@ -14,15 +15,27 @@ using StockSharp.DesktopDriver.Diagnostics;
 using StockSharp.DesktopDriver.Runtime;
 
 /// <summary>
-/// Where the text one control shows is drawn anywhere in its window.
+/// Where the text one control shows is drawn anywhere in its window, and where a path of the machine is.
 /// </summary>
 /// <remarks>
 /// The name of whoever is signed in is shown by one control and quoted by others - a line of the log reads
 /// "name = '…', eula accepted = True" - so covering the control that holds it leaves it in the picture.
 /// What is found here is each run of it, down to the characters, wherever a line of text draws it.
+/// <para>
+/// A folder of the machine is found by its shape rather than by a control that holds it: a storage shown in a box is
+/// quoted by a list of drives and by the log in the same way.
+/// </para>
 /// </remarks>
 internal static class PrivateText
 {
+	// Where a path of this machine begins: a drive, a share, a home folder. A drive letter counts only where no word runs
+	// into it, so "https://" is not one; a time such as "10:30" has no letter before its colon.
+	private static readonly Regex _path = new(
+		@"(?<![A-Za-z0-9])[A-Za-z]:[\\/]|\\\\[^\\/\s]+[\\/]|/(?:home|Users|root)/|(?<!\w)~[\\/]",
+		RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+	private static readonly char[] _lineBreaks = ['\r', '\n'];
+
 	/// <summary>
 	/// Every place the text of a control is drawn in a window, in the window's units.
 	/// </summary>
@@ -47,7 +60,7 @@ internal static class PrivateText
 		if (string.IsNullOrWhiteSpace(text))
 			throw UiErrors.Fail(UiErrorCodes.NotCreated, "The text to keep out of the picture is not shown yet, so there is nothing to look for.");
 
-		foreach (var visual in root.GetVisualDescendants())
+		foreach (var visual in AvaloniaTopLevels.VisualsOf(root))
 		{
 			if (!visual.IsEffectivelyVisible)
 				continue;
@@ -56,6 +69,34 @@ internal static class PrivateText
 			{
 				TextBlock block => Find(root, block, Shown(block), text, block.TextLayout, block.Padding),
 				TextPresenter presenter => Find(root, presenter, presenter.Text, text, presenter.TextLayout, default),
+				_ => [],
+			};
+
+			foreach (var rectangle in found)
+				yield return rectangle;
+		}
+	}
+
+	/// <summary>
+	/// Every place a local path is drawn inside a control, in its window's units.
+	/// </summary>
+	/// <param name="root">The window.</param>
+	/// <param name="within">The control whose paths are kept out.</param>
+	/// <returns>Where each path is drawn, to the end of its line.</returns>
+	public static IEnumerable<Rect> Paths(TopLevel root, Control within)
+	{
+		ArgumentNullException.ThrowIfNull(root);
+		ArgumentNullException.ThrowIfNull(within);
+
+		foreach (var visual in within.GetSelfAndVisualDescendants())
+		{
+			if (!visual.IsEffectivelyVisible)
+				continue;
+
+			var found = visual switch
+			{
+				TextBlock block => FindPaths(root, block, Shown(block), block.TextLayout, block.Padding),
+				TextPresenter presenter => FindPaths(root, presenter, presenter.Text, presenter.TextLayout, default),
 				_ => [],
 			};
 
@@ -80,6 +121,26 @@ internal static class PrivateText
 			start = shown.IndexOf(text, start + text.Length, StringComparison.OrdinalIgnoreCase))
 		{
 			foreach (var drawn in layout.HitTestTextRange(start, text.Length))
+				yield return drawn.Translate(origin);
+		}
+	}
+
+	private static IEnumerable<Rect> FindPaths(TopLevel root, Layoutable owner, string shown, TextLayout layout, Thickness padding)
+	{
+		if (string.IsNullOrEmpty(shown) || layout is null)
+			yield break;
+
+		if (owner.TranslatePoint(new(padding.Left, padding.Top + Overflow(owner, layout, padding)), root) is not Point origin)
+			yield break;
+
+		foreach (Match path in _path.Matches(shown))
+		{
+			var end = shown.IndexOfAny(_lineBreaks, path.Index);
+
+			if (end < 0)
+				end = shown.Length;
+
+			foreach (var drawn in layout.HitTestTextRange(path.Index, end - path.Index))
 				yield return drawn.Translate(origin);
 		}
 	}

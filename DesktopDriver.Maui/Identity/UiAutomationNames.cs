@@ -143,12 +143,32 @@ public static class UiAutomationNames
 	private static string GetLocalId(Element element, Element scopeRoot)
 	{
 		if (!string.IsNullOrEmpty(element.AutomationId))
-			return element.AutomationId;
+			return Qualify(element, scopeRoot, element.AutomationId);
 
 		if (DeclaredRoute(element) is { } route)
 			return route;
 
 		return BuildPath(element, scopeRoot);
+	}
+
+	// A view built from markup of its own names its parts there, and a part can carry the identifier the outer markup
+	// gave the view itself. The outer identifier is what the scope calls the view, so the part inside it is addressed
+	// through it.
+	private static string Qualify(Element element, Element scopeRoot, string declared)
+	{
+		if (ReferenceEquals(element, scopeRoot))
+			return declared;
+
+		for (var current = Parent(element); current is not null; current = Parent(current))
+		{
+			if (current.AutomationId == declared)
+				return $"{GetLocalId(current, scopeRoot)}.{declared}";
+
+			if (ReferenceEquals(current, scopeRoot))
+				break;
+		}
+
+		return declared;
 	}
 
 	// A shell entry is addressed by the route it was declared with: that is the name the application itself

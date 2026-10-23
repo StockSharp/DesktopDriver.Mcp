@@ -91,7 +91,7 @@ public class GridCellControlTests : BaseTestClass
 
 		IsTrue(adapter.SupportsTargetPart(subject, part));
 
-		var target = adapter.ResolveInputTarget(subject, part, new UiClickAction(UiPointerButtons.Left, 1), harness.ContextOf(grid));
+		var target = adapter.ResolveInputTarget(subject, part, new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None), harness.ContextOf(grid));
 
 		var button = grid.GetVisualDescendants().OfType<Button>().Single(candidate => candidate.Name == "PickerButton");
 		var origin = button.TranslatePoint(default, harness.Window) ?? throw new InvalidOperationException("The button is not laid out.");
@@ -119,7 +119,7 @@ public class GridCellControlTests : BaseTestClass
 		var error = Throws<UiAutomationException>(() => adapter.ResolveInputTarget(
 			subject,
 			new UiGridCellControlPart(rowKey, "Security", "NoSuchButton"),
-			new UiClickAction(UiPointerButtons.Left, 1),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 			harness.ContextOf(grid)));
 
 		AreEqual(UiErrorCodes.NotFound, error.Error.Code);

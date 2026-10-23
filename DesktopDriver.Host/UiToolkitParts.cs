@@ -1,6 +1,7 @@
 namespace StockSharp.DesktopDriver.Host;
 
 using System;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,6 +17,8 @@ using StockSharp.DesktopDriver.Runtime;
 /// <param name="InputTargets">Finds where on screen a part of a control is.</param>
 /// <param name="CreateInputDriver">Creates the backend that sends input; asked only for a run that may be driven.</param>
 /// <param name="Screenshots">Takes pictures of controls and windows.</param>
+/// <param name="PictureCapabilities">What the pictures can do beyond leaving a control out - frame what they point at,
+/// find where a text or a path is drawn - as the session reports it.</param>
 /// <param name="Version">The toolkit's version, as the session reports it.</param>
 public sealed record UiToolkitParts(
 	IUiExecutor Executor,
@@ -24,4 +27,5 @@ public sealed record UiToolkitParts(
 	IUiInputTargetResolver InputTargets,
 	Func<IUiInputDriver> CreateInputDriver,
 	Func<UiScreenshotRequest, CancellationToken, Task<UiScreenshotInfo>> Screenshots,
+	ImmutableArray<string> PictureCapabilities,
 	string Version);

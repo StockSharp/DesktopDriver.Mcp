@@ -63,7 +63,7 @@ public class InputRefusalTests : BaseTestClass
 			Guid.NewGuid(),
 			UiTarget.FromId(_id),
 			UiControlPart.Instance,
-			new UiClickAction(UiPointerButtons.Left, 1),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 			null,
 			TimeSpan.FromSeconds(5));
 
@@ -110,6 +110,8 @@ public class InputRefusalTests : BaseTestClass
 		public ImmutableArray<string> Capabilities { get; } = ["input.click"];
 
 		public UiError Refusal => null;
+
+		public Task DrawnAsync(UiTarget target, CancellationToken cancellationToken) => Task.CompletedTask;
 
 		public Task<UiActionReceipt> ExecuteAsync(UiInputRequest request, UiResolvedInputTarget resolvedTarget, CancellationToken cancellationToken)
 		{

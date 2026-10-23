@@ -75,7 +75,7 @@ public class RealInputTests : BaseTestClass
 				Guid.NewGuid(),
 				UiTarget.FromId(id),
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			CancellationToken.None);
@@ -101,7 +101,7 @@ public class RealInputTests : BaseTestClass
 				Guid.NewGuid(),
 				UiTarget.FromId(id),
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			CancellationToken.None);
@@ -207,7 +207,7 @@ public class RealInputTests : BaseTestClass
 				Guid.NewGuid(),
 				UiTarget.FromId(id),
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			CancellationToken.None));
@@ -265,7 +265,7 @@ public class RealInputTests : BaseTestClass
 				Guid.NewGuid(),
 				UiTarget.FromId(id),
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			CancellationToken.None);
@@ -305,13 +305,58 @@ public class RealInputTests : BaseTestClass
 				Guid.NewGuid(),
 				UiTarget.FromId(id),
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			CancellationToken.None));
 
 		AreEqual(UiErrorCodes.NotInteractable, error.Error.Code);
 		AreEqual(0, clicks, "The click landed on something the user could not have reached.");
+	});
+
+	/// <summary>
+	/// A control that has just come into view is pressed once the window has drawn it, as a person presses what has
+	/// appeared, rather than refused as covered by what was drawn in its place before.
+	/// </summary>
+	[TestMethod]
+	[Timeout(60000)]
+	public Task AControlThatHasJustComeIntoViewIsPressedOnceTheWindowHasDrawnIt() => RunAsync(async () =>
+	{
+		var clicks = 0;
+		var button = new Button { Name = "JustShown", Content = "Here now", Width = 120, Height = 40 };
+		button.Click += (_, _) => clicks++;
+		Canvas.SetLeft(button, 150);
+
+		// The frame cuts off what stands past its edge: the button is out of sight until the frame is widened.
+		var frame = new Border
+		{
+			Width = 100,
+			Height = 100,
+			ClipToBounds = true,
+			HorizontalAlignment = HorizontalAlignment.Left,
+			VerticalAlignment = VerticalAlignment.Top,
+			Child = new Canvas { Children = { button } },
+		};
+
+		using var fixture = new AutomationFixture(NewWindow(frame));
+		var id = fixture.Bind(button);
+
+		frame.Width = 300;
+
+		var receipt = await fixture.Input.ExecuteAsync(
+			new UiInputRequest(
+				Guid.NewGuid(),
+				UiTarget.FromId(id),
+				UiControlPart.Instance,
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
+				null,
+				TimeSpan.FromSeconds(5)),
+			CancellationToken.None);
+
+		Dispatcher.UIThread.RunJobs();
+
+		AreEqual(UiActionStatuses.Dispatched, receipt.Status);
+		AreEqual(1, clicks, "The click did not reach the control the window now shows.");
 	});
 
 	[TestMethod]
@@ -333,7 +378,7 @@ public class RealInputTests : BaseTestClass
 				Guid.NewGuid(),
 				UiTarget.FromId(id),
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			cancellation.Token));
@@ -360,7 +405,7 @@ public class RealInputTests : BaseTestClass
 			actionId,
 			UiTarget.FromId(id),
 			UiControlPart.Instance,
-			new UiClickAction(UiPointerButtons.Left, 1),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 			null,
 			TimeSpan.FromSeconds(5));
 
@@ -393,6 +438,40 @@ public class RealInputTests : BaseTestClass
 
 	[TestMethod]
 	[Timeout(60000)]
+	public Task ANumberFieldReportsTheNumberItHoldsAndTheTextItShows() => RunAsync(async () =>
+	{
+		// A volume field: what it holds is the number an order is placed with, and the text is what a person reads.
+		var field = new NumericUpDown { Name = "Volume", Value = 0.001m, FormatString = "0.000", Width = 120 };
+
+		using var fixture = new AutomationFixture(NewWindow(field));
+		var id = fixture.Bind(field);
+
+		var snapshot = await fixture.Snapshots.CaptureAsync(
+			UiTarget.FromId(id), UiCaptureOptions.Default, CancellationToken.None);
+
+		var state = (BasicState)snapshot.State;
+
+		AreEqual(0.001m, ((UiDecimalValue)((UiKnown<UiValue>)state.Value).Value).Value);
+		AreEqual(field.Text, ((UiKnown<string>)state.Text).Value);
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task AnEmptyNumberFieldHoldsNothingRatherThanNought() => RunAsync(async () =>
+	{
+		var field = new NumericUpDown { Name = "Volume", Value = null, Width = 120 };
+
+		using var fixture = new AutomationFixture(NewWindow(field));
+		var id = fixture.Bind(field);
+
+		var snapshot = await fixture.Snapshots.CaptureAsync(
+			UiTarget.FromId(id), UiCaptureOptions.Default, CancellationToken.None);
+
+		IsInstanceOfType<UiNullValue>(((UiKnown<UiValue>)((BasicState)snapshot.State).Value).Value);
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
 	public Task AControlCanBeAddressedBeforeAnythingHasReadIt() => RunAsync(async () =>
 	{
 		// A test names the control it is about and nothing else. Making it walk the whole interface first,
@@ -419,7 +498,7 @@ public class RealInputTests : BaseTestClass
 				Guid.NewGuid(),
 				target,
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			CancellationToken.None);

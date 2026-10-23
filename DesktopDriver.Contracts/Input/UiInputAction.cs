@@ -15,6 +15,9 @@ using System.Text.Json.Serialization;
 [JsonDerivedType(typeof(UiKeyAction), UiKeyAction.KindName)]
 [JsonDerivedType(typeof(UiScrollAction), UiScrollAction.KindName)]
 [JsonDerivedType(typeof(UiEnsureVisibleAction), UiEnsureVisibleAction.KindName)]
+[JsonDerivedType(typeof(UiDragAction), UiDragAction.KindName)]
+[JsonDerivedType(typeof(UiHoverAction), UiHoverAction.KindName)]
+[JsonDerivedType(typeof(UiLeaveAction), UiLeaveAction.KindName)]
 public abstract record UiInputAction
 {
 	/// <summary>
@@ -26,10 +29,66 @@ public abstract record UiInputAction
 /// <summary>A press and release of a pointer button.</summary>
 /// <param name="Button">Which button.</param>
 /// <param name="Count">One click, or two for a double click.</param>
-public sealed record UiClickAction(UiPointerButtons Button, int Count) : UiInputAction
+/// <param name="Modifiers">The keys held while it is clicked.</param>
+/// <remarks>
+/// The keys are held for the click and for nothing else: a click with Ctrl on a chart places an order, and a
+/// test that failed in the middle must not leave the next click placing one too.
+/// </remarks>
+public sealed record UiClickAction(UiPointerButtons Button, int Count, UiKeyModifiers Modifiers) : UiInputAction
 {
 	/// <summary>The wire name.</summary>
 	public const string KindName = "click";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>A press of the left button on the target, carried to another part of the same node and let go there.</summary>
+/// <param name="To">Where it is let go.</param>
+/// <remarks>
+/// The pointer passes through the points between the two, as a hand would carry it: a control that only
+/// starts dragging once the pointer has moved some way, or that scrolls while it is held near an edge, sees
+/// the same movement it would see from a person.
+/// </remarks>
+public sealed record UiDragAction(UiTargetPart To) : UiInputAction
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "drag";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>The pointer brought onto the target and left there, nothing pressed.</summary>
+/// <remarks>
+/// What shows only under the pointer - a row's buttons, a tooltip, a chart's crosshair - shows, and what the pointer was over
+/// before is told it was left.
+/// </remarks>
+public sealed record UiHoverAction : UiInputAction
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "hover";
+
+	/// <summary>The single instance.</summary>
+	public static UiHoverAction Instance { get; } = new();
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>The pointer taken off the window the target is in, as a hand takes the mouse away from it.</summary>
+/// <remarks>
+/// Every control the pointer was over in that window is told it was left, so nothing in it is drawn as being pointed at: the
+/// state a picture of the window is taken in. A pointer that is over no part of that window leaves it without anything being
+/// sent.
+/// </remarks>
+public sealed record UiLeaveAction : UiInputAction
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "leave";
+
+	/// <summary>The single instance.</summary>
+	public static UiLeaveAction Instance { get; } = new();
 
 	/// <inheritdoc />
 	public override string Kind => KindName;

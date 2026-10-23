@@ -58,7 +58,7 @@ public static class AvaloniaAutomationBootstrap
 
 		// A visual that has left every window is not what its address means any more: a page rebuilt under
 		// the same address is searched for again rather than answered with the one that is gone.
-		composition.Nodes.IsLive = instance => instance is not Visual visual || TopLevel.GetTopLevel(visual) is not null;
+		composition.Nodes.IsLive = instance => instance is not Visual visual || AvaloniaTopLevels.Of(visual) is not null;
 
 		var opened = composition.Open(startup, new UiToolkitParts(
 			executor,
@@ -68,6 +68,7 @@ public static class AvaloniaAutomationBootstrap
 			() => new AvaloniaSyntheticInputDriver(composition.Nodes, executor),
 			new AvaloniaScreenshotService(
 				composition.Nodes, composition.Adapters, composition.Revisions, executor, composition.Artifacts, composition.InstanceId).CaptureAsync,
+			AvaloniaScreenshotService.Capabilities,
 			typeof(Application).Assembly.GetName().Version?.ToString()));
 
 		PublishWhenSettled(opened.Endpoint, endpointFile);

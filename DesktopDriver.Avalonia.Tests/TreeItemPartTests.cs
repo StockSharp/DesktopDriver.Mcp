@@ -79,7 +79,7 @@ public class TreeItemPartTests : BaseTestClass
 		=> ((IUiInputTargetAdapter)harness.Adapter).ResolveInputTarget(
 			harness.Subject,
 			part,
-			new UiClickAction(UiPointerButtons.Left, 1),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 			harness.Context);
 
 	private static Point Origin(Visual visual, ControlHarness harness)

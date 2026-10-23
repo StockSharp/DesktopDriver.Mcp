@@ -9,6 +9,7 @@
     <ProjectReference Include="..\DesktopDriver.Runner\DesktopDriver.Runner.csproj" />
     <ProjectReference Include="..\Samples\DesktopDriver.Sample.Wpf\DesktopDriver.Sample.Wpf.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Samples\DesktopDriver.Sample.Maui.Windows\DesktopDriver.Sample.Maui.Windows.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Samples\DesktopDriver.Sample.Avalonia\DesktopDriver.Sample.Avalonia.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +17,8 @@
                       Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\Samples\DesktopDriver.Sample.Wpf\bin\$(Configuration)\$(NetTfm)-windows\StockSharp.DesktopDriver.Sample.Wpf.exe'))" />
     <AssemblyMetadata Include="MauiExecutable"
                       Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\Samples\DesktopDriver.Sample.Maui.Windows\bin\$(Configuration)\$(NetTfm)-windows10.0.19041.0\win-x64\StockSharp.DesktopDriver.Sample.Maui.Windows.exe'))" />
+    <AssemblyMetadata Include="AvaloniaExecutable"
+                      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\Samples\DesktopDriver.Sample.Avalonia\bin\$(Configuration)\$(NetTfm)\StockSharp.DesktopDriver.Sample.Avalonia.exe'))" />
   </ItemGroup>
 
 </Project>

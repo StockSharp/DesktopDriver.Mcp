@@ -23,7 +23,7 @@ public class ServerSurfaceTests : BaseTestClass
 		"ui_chart_series", "ui_chart_points",
 		"ui_order_book_levels", "ui_property_items", "ui_dock_layout",
 		"ui_tree_items", "ui_document_content", "ui_diagram_nodes", "ui_diagram_connections",
-		"ui_click", "ui_type_text", "ui_press_key", "ui_scroll", "ui_bring_into_view",
+		"ui_click", "ui_type_text", "ui_press_key", "ui_scroll", "ui_drag", "ui_hover", "ui_leave", "ui_bring_into_view",
 		"ui_action_status", "ui_wait",
 		"ui_screenshot", "ui_screenshot_image",
 		"ui_diagnostics",
@@ -90,6 +90,21 @@ public class ServerSurfaceTests : BaseTestClass
 	}
 
 	[TestMethod]
+	[Timeout(60000)]
+	public async Task APictureCanFrameWhatItIsAbout()
+	{
+		await using var server = await DrivenServer.StartAsync(Catalogue(), CancellationToken);
+
+		// An agent writing documentation pictures a whole ribbon about one of its commands, framed.
+		foreach (var name in new[] { "ui_screenshot", "ui_screenshot_image" })
+		{
+			var properties = server.Tools.Single(item => item.Name == name).ProtocolTool.InputSchema.GetProperty("properties");
+
+			IsTrue(properties.TryGetProperty("highlight", out _), $"{name} cannot frame anything.");
+		}
+	}
+
+	[TestMethod]
 	public async Task ReadingIsMarkedAsReading()
 	{
 		await using var server = await DrivenServer.StartAsync(Catalogue(), CancellationToken);
@@ -111,7 +126,7 @@ public class ServerSurfaceTests : BaseTestClass
 	{
 		await using var server = await DrivenServer.StartAsync(Catalogue(), CancellationToken);
 
-		foreach (var name in new[] { "ui_click", "ui_type_text", "ui_press_key", "ui_scroll" })
+		foreach (var name in new[] { "ui_click", "ui_type_text", "ui_press_key", "ui_scroll", "ui_drag", "ui_hover", "ui_leave" })
 		{
 			var tool = server.Tools.First(item => item.Name == name);
 

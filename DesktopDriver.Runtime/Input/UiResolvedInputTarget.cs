@@ -20,4 +20,10 @@ public sealed record UiResolvedInputTarget(
 	string SurfaceId,
 	UiRect BoundsInSurfaceDip,
 	UiPoint PointInSurfaceDip,
-	UiRevisions Revisions);
+	UiRevisions Revisions)
+{
+	/// <summary>
+	/// Where a drag is let go, on the same node; a drag has it and nothing else does.
+	/// </summary>
+	public UiPoint DestinationInSurfaceDip { get; init; }
+}

@@ -101,7 +101,8 @@ the current OS user; the session handshake checks the product, running copy and 
 | `ui_tree_items` | What a tree is showing, by path |
 | `ui_document_content` | The lines of a code editor or a markdown viewer |
 | `ui_diagram_nodes` / `ui_diagram_connections` | The blocks a diagram drew and what it joined |
-| `ui_click` / `ui_type_text` / `ui_press_key` / `ui_scroll` | Real input on the machine's own desktop |
+| `ui_click` / `ui_type_text` / `ui_press_key` / `ui_scroll` / `ui_drag` | Input as a person's, sent into the application |
+| `ui_hover` / `ui_leave` | The pointer brought onto a node and left there, or taken off its window |
 | `ui_action_status` | What became of an input already sent |
 | `ui_wait` | Waits for a node or one of its fields |
 | `ui_screenshot` / `ui_screenshot_image` | A picture, as a file or as an image |
@@ -116,10 +117,12 @@ address is `scope/identifier` and survives the panel being moved, floated out or
 
 ## What it can actually do to you
 
-`ui_click`, `ui_type_text`, `ui_press_key` and `ui_scroll` send **real** input to the machine's own
-desktop - the same clicks and keystrokes a person would send, to whatever is under them. Against an
-application connected to a live account, a click on a button that places an order places one; that is
-why an application that reaches anything real refuses input unless it was started on a test profile.
+`ui_click`, `ui_type_text`, `ui_press_key`, `ui_scroll`, `ui_drag` and `ui_hover` are input as a person's
+would be: they go into the application's own input pipeline and reach whatever is under the point, once
+the driver has checked that it is shown, enabled and not covered. The machine's mouse and keyboard are not
+touched. Against an application connected to a live account, a click on a button that places an order
+places one; that is why an application that reaches anything real refuses input unless it was started on
+a test profile.
 
 `ui_release_application` closes an application this server started, without asking it to save anything.
 
@@ -131,5 +134,5 @@ An input coming back `dispatched` means the click was delivered, and nothing mor
 did what was hoped is a separate question, asked with `ui_snapshot` or `ui_wait`. The two are kept
 apart on purpose: a click that arrived at a disabled button arrived.
 
-Input needs a desktop. On a machine with no session attached - a service, a locked console, a build
-agent - the refusal says `inputBlocked`, and that is the machine rather than the application.
+Input does not need anybody watching. It goes into the application rather than through the machine, so
+a locked session drives the same way as one somebody is looking at.

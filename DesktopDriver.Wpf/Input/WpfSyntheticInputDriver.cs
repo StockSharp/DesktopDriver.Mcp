@@ -111,6 +111,25 @@ public sealed class WpfSyntheticInputDriver(IUiNodeRegistry registry, IUiExecuto
 	public UiError Refusal => null;
 
 	/// <inheritdoc />
+	/// <remarks>
+	/// WPF answers what is under a point from its laid-out visuals, and the driver's work runs ahead of the layout the
+	/// dispatcher has pending, so that layout is done first.
+	/// </remarks>
+	public Task DrawnAsync(UiTarget target, CancellationToken cancellationToken)
+	{
+		ArgumentNullException.ThrowIfNull(target);
+
+		return _executor.InvokeAsync(
+			() =>
+			{
+				(_registry.Resolve(target).Instance as UIElement)?.UpdateLayout();
+
+				return true;
+			},
+			cancellationToken);
+	}
+
+	/// <inheritdoc />
 	public Task<UiActionReceipt> ExecuteAsync(
 		UiInputRequest request,
 		UiResolvedInputTarget resolvedTarget,
@@ -163,6 +182,10 @@ public sealed class WpfSyntheticInputDriver(IUiNodeRegistry registry, IUiExecuto
 						UiPointerButtons.Right => MouseButton.Right,
 						_ => throw UiErrors.Invalid("That is not a pointer button."),
 					};
+
+					// A WPF control asks the keyboard itself which keys are down, and no event raised here can hold one.
+					if (click.Modifiers != UiKeyModifiers.None)
+						throw UiErrors.Unsupported("WPF reads the keys held from the keyboard itself, so a click with keys held cannot be sent into the window.");
 
 					Move(under);
 

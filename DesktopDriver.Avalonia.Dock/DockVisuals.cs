@@ -9,6 +9,8 @@ using global::Avalonia.Controls;
 using global::Avalonia.Controls.Presenters;
 using global::Avalonia.VisualTree;
 
+using Dock.Avalonia.Controls;
+using Dock.Model.Controls;
 using Dock.Model.Core;
 
 /// <summary>
@@ -49,20 +51,38 @@ internal static class DockVisuals
 		return null;
 	}
 
-	// A panel's tab carries the panel as its data, exactly as the panel's content does, and the tab comes
-	// first in the tree. A reader that took the first match read the caption on the tab and called it the
-	// panel's content: it answered with a label where a table was asked for, and every address under it
-	// pointed into the tab strip.
-	private static bool IsInAStrip(Visual presenter)
+	/// <summary>
+	/// Whether a visual belongs to a strip of tabs: the tabs of a group, or the buttons along an edge that a panel
+	/// tucked away there slides out from.
+	/// </summary>
+	/// <param name="visual">The visual.</param>
+	/// <returns><see langword="true"/> when it is part of a strip.</returns>
+	/// <remarks>
+	/// A panel's tab carries the panel as its data, exactly as the panel's content does, and the tab comes first
+	/// in the tree. A reader that took the first match read the caption on the tab and called it the panel's
+	/// content: it answered with a label where a table was asked for, and every address under it pointed into the
+	/// tab strip.
+	/// </remarks>
+	public static bool IsInAStrip(Visual visual)
 	{
-		for (var current = presenter.GetVisualParent(); current is not null; current = current.GetVisualParent())
+		for (var current = visual?.GetVisualParent(); current is not null; current = current.GetVisualParent())
 		{
-			if (current.GetType().Name.EndsWith("TabStrip", StringComparison.Ordinal))
+			if (current is ToolPinnedControl || current.GetType().Name.EndsWith("TabStrip", StringComparison.Ordinal))
 				return true;
 		}
 
 		return false;
 	}
+
+	/// <summary>
+	/// The panels tucked away at the edges of a workspace, which belong to no group.
+	/// </summary>
+	/// <param name="root">The root of the layout.</param>
+	/// <returns>The panels, edge by edge.</returns>
+	public static IEnumerable<IDockable> Pinned(IRootDock root)
+		=> new[] { root?.LeftPinnedDockables, root?.RightPinnedDockables, root?.TopPinnedDockables, root?.BottomPinnedDockables }
+			.Where(edge => edge is not null)
+			.SelectMany(edge => edge);
 
 	/// <summary>
 	/// Every window the layout is drawn across, the main one first.

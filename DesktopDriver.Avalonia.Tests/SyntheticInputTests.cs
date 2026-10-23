@@ -66,7 +66,7 @@ public class SyntheticInputTests : BaseTestClass
 			Guid.NewGuid(),
 			UiTarget.FromId(id),
 			UiControlPart.Instance,
-			new UiClickAction(UiPointerButtons.Left, 1),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 			null,
 			TimeSpan.FromSeconds(5));
 

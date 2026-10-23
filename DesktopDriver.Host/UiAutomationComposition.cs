@@ -84,7 +84,7 @@ public sealed class UiAutomationComposition
 			startup.FixtureId,
 			startup.SafeTestProfile,
 			driver.BackendId,
-			driver.Capabilities,
+			[.. driver.Capabilities, .. toolkit.PictureCapabilities],
 			UiReadBudget.Default);
 
 		var trees = new UiSemanticTreeBuilder(InstanceId, snapshots, Nodes, Adapters, toolkit.Roots, toolkit.Executor);

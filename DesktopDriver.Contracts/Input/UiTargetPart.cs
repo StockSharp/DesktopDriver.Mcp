@@ -22,6 +22,10 @@ using System.Text.Json.Serialization;
 [JsonDerivedType(typeof(UiDockTabPart), UiDockTabPart.KindName)]
 [JsonDerivedType(typeof(UiDockClosePart), UiDockClosePart.KindName)]
 [JsonDerivedType(typeof(UiChartAnnotationPart), UiChartAnnotationPart.KindName)]
+[JsonDerivedType(typeof(UiChartPricePart), UiChartPricePart.KindName)]
+[JsonDerivedType(typeof(UiChartOrderPart), UiChartOrderPart.KindName)]
+[JsonDerivedType(typeof(UiChartOrderCancelPart), UiChartOrderCancelPart.KindName)]
+[JsonDerivedType(typeof(UiChartAreaClosePart), UiChartAreaClosePart.KindName)]
 [JsonDerivedType(typeof(UiRibbonItemPart), UiRibbonItemPart.KindName)]
 [JsonDerivedType(typeof(UiListItemPart), UiListItemPart.KindName)]
 public abstract record UiTargetPart
@@ -210,6 +214,60 @@ public sealed record UiChartAnnotationPart(string AnnotationId) : UiTargetPart
 {
 	/// <summary>The wire name.</summary>
 	public const string KindName = "chartAnnotation";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>
+/// A point of the line along which an area of a chart draws a price: half way across the area, or as near it as nothing
+/// is drawn over the line.
+/// </summary>
+/// <param name="AreaId">The area, as the chart's state names it.</param>
+/// <param name="Price">The price.</param>
+/// <remarks>
+/// Named by the price rather than by a position: where a price is on screen moves with every candle that
+/// widens the scale, and a test that worked the position out itself would be aiming at the price of a
+/// moment ago.
+/// </remarks>
+public sealed record UiChartPricePart(string AreaId, decimal Price) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "chartPrice";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>The line of an order a chart shows, where it is taken hold of to move the order.</summary>
+/// <param name="OrderId">The order, as the chart's state names it.</param>
+public sealed record UiChartOrderPart(string OrderId) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "chartOrder";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>The mark beside an order a chart shows that cancels it.</summary>
+/// <param name="OrderId">The order, as the chart's state names it.</param>
+public sealed record UiChartOrderCancelPart(string OrderId) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "chartOrderCancel";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>The cross on the header of a pane of a chart that closes the pane.</summary>
+/// <param name="AreaId">The pane, as the chart's state names its areas.</param>
+/// <remarks>The first pane is the chart itself and has no header to close it by.</remarks>
+public sealed record UiChartAreaClosePart(string AreaId) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "chartAreaClose";
 
 	/// <inheritdoc />
 	public override string Kind => KindName;

@@ -72,6 +72,9 @@ internal static class UiCommands
 			"type" => Type(arguments),
 			"key" => Key(arguments),
 			"scroll" => Scroll(arguments),
+			"drag" => Drag(arguments),
+			"hover" => Input(arguments, UiHoverAction.Instance),
+			"leave" => Input(arguments, UiLeaveAction.Instance),
 			"show" => Input(arguments, UiEnsureVisibleAction.Instance),
 			"action-status" => ActionStatus(arguments),
 			"wait" => Wait(arguments),
@@ -253,7 +256,16 @@ internal static class UiCommands
 	private static Operation Click(UiArguments arguments)
 		=> Input(arguments, new UiClickAction(
 			arguments.Choice("button", UiPointerButtons.Left),
-			arguments.Number("count", 1)));
+			arguments.Number("count", 1),
+			Modifiers(arguments)));
+
+	private static Operation Drag(UiArguments arguments)
+	{
+		if (arguments.Optional("to-part") is null)
+			throw new UiUsageException("drag needs --to-part and what it takes: where the drag is let go.");
+
+		return Input(arguments, new UiDragAction(Part(arguments, "to-")));
+	}
 
 	private static Operation Type(UiArguments arguments)
 		=> Input(arguments, new UiTextAction(
@@ -303,7 +315,10 @@ internal static class UiCommands
 			null,
 			[.. (arguments.Optional("mask") ?? string.Empty)
 				.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-				.Select(Mask)]);
+				.Select(Mask)],
+			[.. (arguments.Optional("highlight") ?? string.Empty)
+				.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+				.Select(Highlight)]);
 
 		var path = arguments.Optional("out");
 
@@ -357,33 +372,48 @@ internal static class UiCommands
 		return async (client, token) => UiJson.Write(await client.ExecuteInputAsync(request, token));
 	}
 
-	private static UiTargetPart Part(UiArguments arguments)
+	private static UiTargetPart Part(UiArguments arguments) => Part(arguments, string.Empty);
+
+	// The part of a node an action is aimed at, read from the options that start with the prefix: none for where it is
+	// pressed, "to-" for where a drag is let go.
+	private static UiTargetPart Part(UiArguments arguments, string prefix)
 	{
-		var kind = arguments.Optional("part") ?? UiControlPart.KindName;
+		var kind = arguments.Optional(prefix + "part") ?? UiControlPart.KindName;
+
+		string Required(string name) => arguments.Required(prefix + name);
 
 		return kind switch
 		{
 			UiControlPart.KindName => UiControlPart.Instance,
-			UiGridHeaderPart.KindName => new UiGridHeaderPart(arguments.Required("column")),
-			UiGridCellPart.KindName => new UiGridCellPart(arguments.Required("row"), arguments.Required("column")),
+			UiGridHeaderPart.KindName => new UiGridHeaderPart(Required("column")),
+			UiGridCellPart.KindName => new UiGridCellPart(Required("row"), Required("column")),
 			UiGridCellControlPart.KindName => new UiGridCellControlPart(
-				arguments.Required("row"), arguments.Required("column"), arguments.Required("control")),
-			UiPropertyValuePart.KindName => new UiPropertyValuePart(arguments.Required("path")),
-			UiPropertyValueControlPart.KindName => new UiPropertyValueControlPart(arguments.Required("path"), arguments.Required("control")),
+				Required("row"), Required("column"), Required("control")),
+			UiPropertyValuePart.KindName => new UiPropertyValuePart(Required("path")),
+			UiPropertyValueControlPart.KindName => new UiPropertyValueControlPart(Required("path"), Required("control")),
 			UiListItemPart.KindName => new UiListItemPart(
-				arguments.Index("index") ?? throw new UiUsageException("--part listItem needs --index.")),
-			UiTreeItemPart.KindName => new UiTreeItemPart(arguments.Required("item")),
-			UiTreeItemControlPart.KindName => new UiTreeItemControlPart(arguments.Required("item"), arguments.Required("control")),
-			UiDockTabPart.KindName => new UiDockTabPart(arguments.Required("panel")),
-			UiDockClosePart.KindName => new UiDockClosePart(arguments.Required("panel")),
-			UiRibbonItemPart.KindName => new UiRibbonItemPart(arguments.Required("item")),
-			UiChartAnnotationPart.KindName => new UiChartAnnotationPart(arguments.Required("annotation")),
+				arguments.Index(prefix + "index") ?? throw new UiUsageException($"--{prefix}part listItem needs --{prefix}index.")),
+			UiTreeItemPart.KindName => new UiTreeItemPart(Required("item")),
+			UiTreeItemControlPart.KindName => new UiTreeItemControlPart(Required("item"), Required("control")),
+			UiDockTabPart.KindName => new UiDockTabPart(Required("panel")),
+			UiDockClosePart.KindName => new UiDockClosePart(Required("panel")),
+			UiRibbonItemPart.KindName => new UiRibbonItemPart(Required("item")),
+			UiChartAnnotationPart.KindName => new UiChartAnnotationPart(Required("annotation")),
+			UiChartPricePart.KindName => new UiChartPricePart(Required("area"), Price(Required("price"))),
+			UiChartOrderPart.KindName => new UiChartOrderPart(Required("order")),
+			UiChartOrderCancelPart.KindName => new UiChartOrderCancelPart(Required("order")),
+			UiChartAreaClosePart.KindName => new UiChartAreaClosePart(Required("area")),
 			_ => throw new UiUsageException(
-				$"--part takes one of {UiControlPart.KindName}, {UiGridHeaderPart.KindName}, " +
-				$"{UiGridCellPart.KindName}, {UiGridCellControlPart.KindName}, {UiPropertyValuePart.KindName}, {UiPropertyValueControlPart.KindName}, {UiListItemPart.KindName}, {UiTreeItemPart.KindName}, {UiTreeItemControlPart.KindName}, {UiDockTabPart.KindName}, {UiDockClosePart.KindName}, {UiRibbonItemPart.KindName} or " +
-				$"{UiChartAnnotationPart.KindName}, not '{kind}'."),
+				$"--{prefix}part takes one of {UiControlPart.KindName}, {UiGridHeaderPart.KindName}, " +
+				$"{UiGridCellPart.KindName}, {UiGridCellControlPart.KindName}, {UiPropertyValuePart.KindName}, {UiPropertyValueControlPart.KindName}, {UiListItemPart.KindName}, {UiTreeItemPart.KindName}, {UiTreeItemControlPart.KindName}, {UiDockTabPart.KindName}, {UiDockClosePart.KindName}, {UiRibbonItemPart.KindName}, " +
+				$"{UiChartAnnotationPart.KindName}, {UiChartPricePart.KindName}, {UiChartOrderPart.KindName}, {UiChartOrderCancelPart.KindName} or {UiChartAreaClosePart.KindName}, not '{kind}'."),
 		};
 	}
+
+	// Written with a point whatever the machine's language: to one reader a comma separates thousands, to another it is
+	// the point itself, and a price read the wrong way is an order at another price.
+	private static decimal Price(string text)
+		=> Parsed(decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var price), price, UiValueKinds.Decimal, text);
 
 	private static UiCondition Condition(UiArguments arguments)
 	{
@@ -508,19 +538,35 @@ internal static class UiCommands
 	// column of a table, down its height.
 	private static UiMask Mask(string text)
 	{
+		var (node, part) = Pointed("mask", text);
+
+		return new(node, part, UiMaskScopes.Node);
+	}
+
+	// The same spelling, for the things a picture frames: "scope/identifier" frames a control,
+	// "scope/identifier#column" the heading of that column of a table.
+	private static UiHighlight Highlight(string text)
+	{
+		var (node, part) = Pointed("highlight", text);
+
+		return new(node, part);
+	}
+
+	private static (UiNodeId Node, UiTargetPart Part) Pointed(string option, string text)
+	{
 		var hash = text.IndexOf('#');
 
 		return hash < 0
-			? new(Address(text), null, UiMaskScopes.Node)
-			: new(Address(text[..hash]), new UiGridHeaderPart(text[(hash + 1)..]), UiMaskScopes.Node);
+			? (Address(option, text), null)
+			: (Address(option, text[..hash]), new UiGridHeaderPart(text[(hash + 1)..]));
 	}
 
-	private static UiNodeId Address(string text)
+	private static UiNodeId Address(string option, string text)
 	{
 		var separator = text.IndexOf('/');
 
 		if (separator <= 0 || separator == text.Length - 1)
-			throw new UiUsageException($"--mask takes a scope and an identifier, as scope/identifier, not '{text}'.");
+			throw new UiUsageException($"--{option} takes a scope and an identifier, as scope/identifier, not '{text}'.");
 
 		return new UiNodeId(text[..separator], text[(separator + 1)..]);
 	}

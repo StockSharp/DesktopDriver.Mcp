@@ -1,7 +1,9 @@
 ﻿namespace StockSharp.DesktopDriver.Avalonia;
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -44,21 +46,58 @@ using StockSharp.DesktopDriver.Values;
 /// </remarks>
 public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiExecutor executor) : IUiInputDriver
 {
+	private static readonly TimeSpan _drawPatience = TimeSpan.FromMilliseconds(500);
+
 	private readonly IUiNodeRegistry _registry = registry ?? throw new ArgumentNullException(nameof(registry));
 	private readonly IUiExecutor _executor = executor ?? throw new ArgumentNullException(nameof(executor));
 	private readonly Pointer _pointer = new(Pointer.GetNextFreeId(), PointerType.Mouse, true);
 
 	private ulong _timestamp;
 
+	// What the pointer is over, the window that is in and where in it. The framework keeps this itself only for the input
+	// the windowing system gives it, and input sent here goes round that.
+	private Control _over;
+	private TopLevel _overRoot;
+	private Point _overPoint;
+
 	/// <inheritdoc />
 	public string BackendId => "avalonia.synthetic";
 
 	/// <inheritdoc />
 	public ImmutableArray<string> Capabilities { get; } =
-		["input.click", "input.text", "input.key", "input.scroll"];
+		["input.click", "input.text", "input.key", "input.scroll", "input.drag", "input.hover", "input.leave"];
 
 	/// <inheritdoc />
 	public UiError Refusal => null;
+
+	/// <inheritdoc />
+	/// <remarks>
+	/// Avalonia answers what is under a point from what it has drawn, and draws on its own clock. A window that draws
+	/// nothing - minimised, or on a desktop nobody looks at - is not waited for past a few frames' time.
+	/// </remarks>
+	public async Task DrawnAsync(UiTarget target, CancellationToken cancellationToken)
+	{
+		ArgumentNullException.ThrowIfNull(target);
+
+		var drawn = await _executor.InvokeAsync(() => NextFrameDrawn(target), cancellationToken);
+
+		await Task.WhenAny(drawn, Task.Delay(_drawPatience, cancellationToken));
+
+		cancellationToken.ThrowIfCancellationRequested();
+	}
+
+	// The frame asked for first lays out and draws what is pending; the one asked for from it starts after that is drawn.
+	private Task NextFrameDrawn(UiTarget target)
+	{
+		if (_registry.Resolve(target).Instance is not Visual visual || AvaloniaTopLevels.Of(visual) is not { } topLevel)
+			return Task.CompletedTask;
+
+		var drawn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+		topLevel.RequestAnimationFrame(_ => topLevel.RequestAnimationFrame(_ => drawn.TrySetResult()));
+
+		return drawn.Task;
+	}
 
 	/// <inheritdoc />
 	public Task<UiActionReceipt> ExecuteAsync(
@@ -80,7 +119,7 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 		var control = Resolve(resolvedTarget.Node?.Id)
 			?? throw UiErrors.Fail(UiErrorCodes.InputUnavailable, "That node is not a control this backend can reach.");
 
-		var root = TopLevel.GetTopLevel(control)
+		var root = AvaloniaTopLevels.Of(control)
 			?? throw UiErrors.Fail(UiErrorCodes.InputUnavailable, "That control is not in a window.");
 
 		var point = new Point(resolvedTarget.PointInSurfaceDip.X, resolvedTarget.PointInSurfaceDip.Y);
@@ -88,7 +127,7 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 		// Pointer events go to whatever is at the point, not to the node that was named. They are the same
 		// thing for a button; they are not for a part of a compound control - a tab of a dock, a cell of a
 		// table - where the node is the whole control and the point is the piece of it being aimed at.
-		var under = root.InputHitTest(point) as Control ?? control;
+		var under = AvaloniaTopLevels.HitTest(root, point) as Control ?? control;
 		var dispatched = false;
 
 		// Checked once more here, with the action about to go in: one cancelled while it queued must not
@@ -109,15 +148,19 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 						_ => throw UiErrors.Invalid("That is not a pointer button."),
 					};
 
-					Move(under, root, point);
+					var keys = ToModifiers(click.Modifiers);
+
+					Move(under, root, point, keys, RawInputModifiers.None);
 
 					// A control is asked to do the thing a click does, through the same action an
 					// accessibility tool would use, rather than being handed a pointer it may or may not
 					// believe in. The pointer events below are what happens when a control names no action.
 					// Only for the whole control: a part is identified by the point and by nothing else, and
-					// an action found by walking up from it would be the container's, not the part's.
+					// an action found by walking up from it would be the container's, not the part's. And only
+					// with no keys held: what a click with Ctrl means is the control's business, not its action's.
 					if (button == MouseButton.Left
 						&& click.Count <= 1
+						&& click.Modifiers == UiKeyModifiers.None
 						&& request.Part is UiControlPart
 						&& Act(under, control, root))
 					{
@@ -128,10 +171,33 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 
 					for (var index = 0; index < Math.Max(1, click.Count); index++)
 					{
-						Press(under, root, point, button, index + 1);
+						Press(under, root, point, button, index + 1, keys);
 						dispatched = true;
-						Release(under, root, point, button);
+						Release(Holder(under), root, point, button, keys);
 					}
+
+					break;
+				}
+
+				case UiDragAction:
+				{
+					var destination = resolvedTarget.DestinationInSurfaceDip
+						?? throw UiErrors.Invalid("A drag came without the place to let it go.");
+
+					var end = new Point(destination.X, destination.Y);
+
+					Move(under, root, point, KeyModifiers.None, RawInputModifiers.None);
+					Press(under, root, point, MouseButton.Left, 1, KeyModifiers.None);
+					dispatched = true;
+
+					// The rest of the gesture goes to whatever took hold of the pointer when it was pressed, as the
+					// input system routes it, and passes through the points between the two ends.
+					var holder = Holder(under);
+
+					foreach (var step in AvaloniaDragPath.Between(point, end))
+						Move(holder, root, step, KeyModifiers.None, RawInputModifiers.LeftMouseButton);
+
+					Release(holder, root, end, MouseButton.Left, KeyModifiers.None);
 
 					break;
 				}
@@ -180,9 +246,34 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 					break;
 				}
 
+				case UiHoverAction:
+				{
+					Move(under, root, point, KeyModifiers.None, RawInputModifiers.None);
+					dispatched = true;
+
+					break;
+				}
+
+				case UiLeaveAction:
+				{
+					// A window the pointer is not in has nothing of it to lose.
+					if (_over is null || !ReferenceEquals(_overRoot, root))
+						break;
+
+					var left = Chain(_over);
+
+					_over = null;
+					_overRoot = null;
+
+					Raise(InputElement.PointerExitedEvent, left, root, _overPoint, KeyModifiers.None);
+					dispatched = true;
+
+					break;
+				}
+
 				case UiScrollAction scroll:
 				{
-					Move(under, root, point);
+					Move(under, root, point, KeyModifiers.None, RawInputModifiers.None);
 
 					under.RaiseEvent(new PointerWheelEventArgs(
 						under,
@@ -316,37 +407,103 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 			control.Focus();
 	}
 
-	private void Move(Control control, TopLevel root, Point point)
-		=> control.RaiseEvent(new PointerEventArgs(
+	// The pointer belongs to whatever took hold of it on the press, and what follows the press goes there.
+	private Control Holder(Control under) => _pointer.Captured as Control ?? under;
+
+	private void Move(Control control, TopLevel root, Point point, KeyModifiers keys, RawInputModifiers buttons)
+	{
+		Over(control, root, point, keys);
+
+		control.RaiseEvent(new PointerEventArgs(
 			InputElement.PointerMovedEvent,
 			control,
 			_pointer,
 			root,
 			point,
 			Stamp(),
-			new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.Other),
-			KeyModifiers.None));
+			new PointerPointProperties(buttons | ToRaw(keys), PointerUpdateKind.Other),
+			keys));
+	}
 
-	private void Press(Control control, TopLevel root, Point point, MouseButton button, int count)
+	// The pointer comes over a control. What it leaves is told so, innermost first, and then what it comes over, as the
+	// framework tells the movements of its own pointer; a window left for another is left entirely, unless it is gone.
+	private void Over(Control control, TopLevel root, Point point, KeyModifiers keys)
+	{
+		if (ReferenceEquals(control, _over))
+		{
+			_overPoint = point;
+
+			return;
+		}
+
+		var coming = Chain(control);
+		var going = _overRoot?.PlatformImpl is null ? [] : Chain(_over);
+		var shared = going.FirstOrDefault(element => coming.Contains(element));
+
+		var left = going.TakeWhile(element => !ReferenceEquals(element, shared)).ToArray();
+		var entered = coming.TakeWhile(element => !ReferenceEquals(element, shared)).ToArray();
+		var leftRoot = _overRoot;
+		var leftPoint = _overPoint;
+
+		_over = control;
+		_overRoot = root;
+		_overPoint = point;
+
+		Raise(InputElement.PointerExitedEvent, left, leftRoot, leftPoint, keys);
+		Raise(InputElement.PointerEnteredEvent, entered, root, point, keys);
+	}
+
+	// The control and everything it sits in that takes input, innermost first.
+	private static List<InputElement> Chain(Visual visual)
+	{
+		var chain = new List<InputElement>();
+
+		for (var current = visual; current is not null; current = current.GetVisualParent())
+		{
+			if (current is InputElement element)
+				chain.Add(element);
+		}
+
+		return chain;
+	}
+
+	// One event to each of the elements in turn, as the pointer's coming and going is a direct event to each of them.
+	private void Raise(RoutedEvent<PointerEventArgs> routedEvent, IEnumerable<InputElement> elements, TopLevel root, Point point, KeyModifiers keys)
+	{
+		foreach (var element in elements)
+		{
+			element.RaiseEvent(new PointerEventArgs(
+				routedEvent,
+				element,
+				_pointer,
+				root,
+				point,
+				Stamp(),
+				new PointerPointProperties(ToRaw(keys), PointerUpdateKind.Other),
+				keys));
+		}
+	}
+
+	private void Press(Control control, TopLevel root, Point point, MouseButton button, int count, KeyModifiers keys)
 		=> control.RaiseEvent(new PointerPressedEventArgs(
 			control,
 			_pointer,
 			root,
 			point,
 			Stamp(),
-			new PointerPointProperties(Held(button), Down(button)),
-			KeyModifiers.None,
+			new PointerPointProperties(Held(button) | ToRaw(keys), Down(button)),
+			keys,
 			count));
 
-	private void Release(Control control, TopLevel root, Point point, MouseButton button)
+	private void Release(Control control, TopLevel root, Point point, MouseButton button, KeyModifiers keys)
 		=> control.RaiseEvent(new PointerReleasedEventArgs(
 			control,
 			_pointer,
 			root,
 			point,
 			Stamp(),
-			new PointerPointProperties(RawInputModifiers.None, Up(button)),
-			KeyModifiers.None,
+			new PointerPointProperties(ToRaw(keys), Up(button)),
+			keys,
 			button));
 
 	private static void Key(Control control, Key key, KeyModifiers modifiers)
@@ -376,7 +533,7 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 		{
 			try
 			{
-				Release(control, root, point, MouseButton.Left);
+				Release(Holder(control), root, point, MouseButton.Left, KeyModifiers.None);
 			}
 			catch (Exception)
 			{
@@ -415,6 +572,26 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 		MouseButton.Right => PointerUpdateKind.RightButtonReleased,
 		_ => PointerUpdateKind.Other,
 	};
+
+	// The keys held, as the pointer's own state carries them alongside its buttons.
+	private static RawInputModifiers ToRaw(KeyModifiers keys)
+	{
+		var result = RawInputModifiers.None;
+
+		if (keys.HasFlag(KeyModifiers.Shift))
+			result |= RawInputModifiers.Shift;
+
+		if (keys.HasFlag(KeyModifiers.Control))
+			result |= RawInputModifiers.Control;
+
+		if (keys.HasFlag(KeyModifiers.Alt))
+			result |= RawInputModifiers.Alt;
+
+		if (keys.HasFlag(KeyModifiers.Meta))
+			result |= RawInputModifiers.Meta;
+
+		return result;
+	}
 
 	private static KeyModifiers ToModifiers(UiKeyModifiers modifiers)
 	{

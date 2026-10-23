@@ -10,9 +10,12 @@ using System.Threading.Tasks;
 
 using global::Avalonia;
 using global::Avalonia.Controls;
+using global::Avalonia.Controls.Presenters;
 using global::Avalonia.Media;
 using global::Avalonia.Media.Imaging;
+using global::Avalonia.Media.TextFormatting;
 using global::Avalonia.Threading;
+using global::Avalonia.VisualTree;
 
 using Ecng.UnitTesting;
 
@@ -21,6 +24,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StockSharp.DesktopDriver.Avalonia;
 using StockSharp.DesktopDriver.Diagnostics;
 using StockSharp.DesktopDriver.Identity;
+using StockSharp.DesktopDriver.Input;
 using StockSharp.DesktopDriver.Runtime;
 
 /// <summary>
@@ -72,8 +76,8 @@ public class ScreenshotTests : BaseTestClass
 		var service = new AvaloniaScreenshotService(
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
-		var plain = await Pixels(service, artifacts, pageId, []);
-		var masked = await Pixels(service, artifacts, pageId, [new UiMask(secretId, null, UiMaskScopes.Node)]);
+		var plain = await Pixels(service, artifacts, pageId, [], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(secretId, null, UiMaskScopes.Node)], []);
 
 		var covered = new PixelRect(0, 0, 200, 40);
 
@@ -120,8 +124,8 @@ public class ScreenshotTests : BaseTestClass
 		var service = new AvaloniaScreenshotService(
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
-		var plain = await Pixels(service, artifacts, pageId, []);
-		var masked = await Pixels(service, artifacts, pageId, [new UiMask(userId, null, UiMaskScopes.Text)]);
+		var plain = await Pixels(service, artifacts, pageId, [], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(userId, null, UiMaskScopes.Text)], []);
 
 		var shown = Drawn.Where(user, page, "Gooner");
 		var quoted = Drawn.Where(log, page, "Gooner");
@@ -173,10 +177,183 @@ public class ScreenshotTests : BaseTestClass
 				0,
 				0,
 				null,
-				[new UiMask(userId, null, UiMaskScopes.Text)]),
+				[new UiMask(userId, null, UiMaskScopes.Text)],
+				[]),
 			CancellationToken.None));
 
 		AreEqual(UiErrorCodes.NotCreated, error.Error.Code);
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task LocalPathsAreKeptOutWhereverTheyAreDrawn() => RunAsync(async () =>
+	{
+		// Where a product keeps its data is a folder of the machine the picture was taken on: shown on its own,
+		// quoted in a line of the log, edited in a box. A path may hold a space, so where it ends cannot be told.
+		var storage = Line("StorageLine", @"D:\work\Storage");
+		var log = Line("LogLine", @"Loaded from D:\my work\Storage 5 files");
+		var home = Line("HomeLine", "Read /home/somebody/settings.json");
+		var share = Line("ShareLine", @"Copied to \\server\share\x");
+		var other = Line("OtherLine", "At 10:30 from https://stocksharp.com");
+		var box = new TextBox { Name = "PathBox", Text = @"C:\Users\somebody\Documents", FontSize = 20 };
+
+		var page = new StackPanel { Name = "PathPage", Width = 380, Spacing = 12, Background = Brushes.White };
+
+		page.Children.Add(storage);
+		page.Children.Add(log);
+		page.Children.Add(home);
+		page.Children.Add(share);
+		page.Children.Add(other);
+		page.Children.Add(box);
+
+		var window = new Window { Name = "PathWindow", Width = 400, Height = 400, Content = page };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var pageId = fixture.Bind(page);
+		var artifacts = new UiArtifactStore();
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
+
+		var plain = await Pixels(service, artifacts, pageId, [], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(pageId, null, UiMaskScopes.Paths)], []);
+
+		var quoted = Drawn.Where(log, page, @"D:\my work\Storage 5 files");
+		var typed = Drawn.Where(box.GetVisualDescendants().OfType<TextPresenter>().Single(), page, box.Text);
+
+		IsTrue(plain.Steepest(quoted) > 128, "The path was not drawn in the log line, so this proves nothing.");
+		IsTrue(plain.Steepest(typed) > 128, "The path was not drawn in the box, so this proves nothing.");
+
+		IsTrue(masked.Steepest(Drawn.Where(storage, page, storage.Text)) < 24, "A path shown on its own can still be read.");
+		IsTrue(masked.Steepest(quoted) < 24, "A path can still be read past its space, in the middle of the log line.");
+		IsTrue(masked.Steepest(Drawn.Where(home, page, "/home/somebody/settings.json")) < 24, "A home folder can still be read.");
+		IsTrue(masked.Steepest(Drawn.Where(share, page, @"\\server\share\x")) < 24, "A share can still be read.");
+		IsTrue(masked.Steepest(typed) < 24, "A path being edited can still be read.");
+
+		// The words around a path are what the picture is for, and a time or an address is not a path.
+		IsTrue(plain.Same(masked, Drawn.Where(log, page, "Loaded from")), "The line was blurred before the path.");
+		IsTrue(plain.Same(masked, Drawn.Where(home, page, "Read")), "The line was blurred before the home folder.");
+		IsTrue(plain.Same(masked, Drawn.Where(other, page, other.Text)), "A line with no path in it was touched.");
+
+		static TextBlock Line(string name, string text)
+			=> new() { Name = name, Text = text, FontSize = 20, Foreground = Brushes.Black };
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task APathCutShortIsKeptOutAsFarAsItIsDrawn() => RunAsync(async () =>
+	{
+		// A storage too long for its box is drawn up to an ellipsis, and what is drawn of it is the beginning of
+		// the folder - the very part that says whose machine it is.
+		var cut = new TextBlock
+		{
+			Name = "CutLine",
+			Text = @"D:\somebody\work\stocksharp\Storage",
+			Width = 120,
+			TextTrimming = TextTrimming.CharacterEllipsis,
+			FontSize = 20,
+			Foreground = Brushes.Black,
+		};
+
+		var page = new StackPanel { Name = "CutPage", Width = 200, Height = 60, Background = Brushes.White };
+
+		page.Children.Add(cut);
+
+		var window = new Window { Name = "CutWindow", Width = 400, Height = 300, Content = page };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var pageId = fixture.Bind(page);
+		var artifacts = new UiArtifactStore();
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
+
+		var plain = await Pixels(service, artifacts, pageId, [], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(pageId, null, UiMaskScopes.Paths)], []);
+
+		var drawn = Drawn.Bounds(cut, page);
+
+		IsTrue(plain.Steepest(drawn) > 128, "Nothing of the path was drawn, so this proves nothing.");
+		IsTrue(masked.Steepest(drawn) < 24, "What is drawn of the path can still be read.");
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task PathsAreKeptOutOnlyInsideTheNodeNamed() => RunAsync(async () =>
+	{
+		// A product names the panel whose paths are its own business; a path drawn beside that panel is somebody
+		// else's decision.
+		var inside = new TextBlock { Name = "InsideLine", Text = @"D:\inside\Storage", FontSize = 20, Foreground = Brushes.Black };
+		var outside = new TextBlock { Name = "OutsideLine", Text = @"D:\outside\Storage", FontSize = 20, Foreground = Brushes.Black };
+		var panel = new StackPanel { Name = "InsidePanel" };
+
+		panel.Children.Add(inside);
+
+		var page = new StackPanel { Name = "BothPage", Width = 380, Spacing = 12, Background = Brushes.White };
+
+		page.Children.Add(panel);
+		page.Children.Add(outside);
+
+		var window = new Window { Name = "BothWindow", Width = 400, Height = 300, Content = page };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var pageId = fixture.Bind(page);
+		var panelId = fixture.Bind(panel);
+		var artifacts = new UiArtifactStore();
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
+
+		var plain = await Pixels(service, artifacts, pageId, [], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(panelId, null, UiMaskScopes.Paths)], []);
+
+		IsTrue(masked.Steepest(Drawn.Where(inside, page, inside.Text)) < 24, "The path inside the node can still be read.");
+		IsTrue(plain.Same(masked, Drawn.Where(outside, page, outside.Text)), "A path outside the node was touched.");
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task APartOfThePathsIsRefused() => RunAsync(async () =>
+	{
+		var line = new TextBlock { Name = "PartLine", Text = @"D:\work\Storage" };
+		var window = new Window { Name = "PartWindow", Width = 400, Height = 300, Content = line };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var id = fixture.Bind(line);
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, new UiArtifactStore(), fixture.InstanceId);
+
+		// The paths are found wherever they are drawn inside the node, so a column of it narrows nothing.
+		var error = await ThrowsAsync<UiAutomationException>(() => service.CaptureAsync(
+			new UiScreenshotRequest(
+				UiTarget.FromId(id),
+				UiCaptureKinds.ControlRender,
+				false,
+				0,
+				0,
+				null,
+				[new UiMask(id, new UiGridHeaderPart("Path"), UiMaskScopes.Paths)],
+				[]),
+			CancellationToken.None));
+
+		AreEqual(UiErrorCodes.InvalidRequest, error.Error.Code);
 	});
 
 	[TestMethod]
@@ -206,9 +383,124 @@ public class ScreenshotTests : BaseTestClass
 				0,
 				0,
 				null,
-				[new UiMask(new UiNodeId("window:MissingMaskWindow", "NoSuchThing"), null, UiMaskScopes.Node)]),
+				[new UiMask(new UiNodeId("window:MissingMaskWindow", "NoSuchThing"), null, UiMaskScopes.Node)],
+				[]),
 			CancellationToken.None));
 	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task AHighlightIsAFrameRoundWhatItPointsAt() => RunAsync(async () =>
+	{
+		// A page about one command of a ribbon shows the whole ribbon with that command framed: the frame runs round
+		// the command a little outside it, and what the command draws is left as it was.
+		var (window, ribbon, command) = Ribbon("FramedWindow");
+
+		using var fixture = new AutomationFixture(window);
+		var ribbonId = fixture.Bind(ribbon);
+		var commandId = fixture.Bind(command);
+		var artifacts = new UiArtifactStore();
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
+
+		var plain = await Pixels(service, artifacts, ribbonId, [], []);
+		var framed = await Pixels(service, artifacts, ribbonId, [], [new UiHighlight(commandId, null)]);
+
+		var scaling = window.RenderScaling;
+		var left = (int)(110 * scaling);
+		var top = (int)(40 * scaling);
+		var right = (int)(190 * scaling);
+		var bottom = (int)(80 * scaling);
+
+		IsTrue(plain.Same(framed, new PixelRect(left, top, right - left, bottom - top)), "The frame covers what it points at.");
+
+		// Five units outside every side: a frame stands off what it points at rather than touching it.
+		foreach (var (x, y) in new[] { (left - (int)(5 * scaling), (top + bottom) / 2), (right + (int)(4 * scaling), (top + bottom) / 2), ((left + right) / 2, top - (int)(5 * scaling)), ((left + right) / 2, bottom + (int)(4 * scaling)) })
+		{
+			var drawn = framed.At(x, y);
+
+			IsTrue(drawn.R > 180 && drawn.G < 120 && drawn.B < 120, $"No frame at {x}, {y}: {drawn}.");
+		}
+
+		IsTrue(plain.Same(framed, new PixelRect(0, 0, left - (int)(12 * scaling), (int)(120 * scaling))), "The frame reaches far beyond what it points at.");
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task AHighlightOfSomethingNotThereIsRefused() => RunAsync(async () =>
+	{
+		var (window, ribbon, _) = Ribbon("MissingFrameWindow");
+
+		using var fixture = new AutomationFixture(window);
+		var ribbonId = fixture.Bind(ribbon);
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, new UiArtifactStore(), fixture.InstanceId);
+
+		// A picture whose frame went missing points at nothing, and the page that explains the framed command
+		// would be explaining a picture without it.
+		await ThrowsAsync<UiAutomationException>(() => service.CaptureAsync(
+			new UiScreenshotRequest(
+				UiTarget.FromId(ribbonId),
+				UiCaptureKinds.ControlRender,
+				false,
+				0,
+				0,
+				null,
+				[],
+				[new UiHighlight(new UiNodeId("window:MissingFrameWindow", "NoSuchThing"), null)]),
+			CancellationToken.None));
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task AHighlightOutsideThePictureIsRefused() => RunAsync(async () =>
+	{
+		var (window, ribbon, command) = Ribbon("OutsideFrameWindow");
+
+		using var fixture = new AutomationFixture(window);
+		var ribbonId = fixture.Bind(ribbon);
+		var commandId = fixture.Bind(command);
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, new UiArtifactStore(), fixture.InstanceId);
+
+		// The ribbon is round the command, not the other way round: a picture of the command alone cannot frame the
+		// ribbon it stands in.
+		var error = await ThrowsAsync<UiAutomationException>(() => service.CaptureAsync(
+			new UiScreenshotRequest(
+				UiTarget.FromId(commandId),
+				UiCaptureKinds.ControlRender,
+				false,
+				0,
+				0,
+				null,
+				[],
+				[new UiHighlight(ribbonId, null)]),
+			CancellationToken.None));
+
+		AreEqual(UiErrorCodes.InvalidRequest, error.Error.Code);
+	});
+
+	// A white ribbon with one grey command on it, 80 by 40 at 110, 40.
+	private static (Window Window, Canvas Ribbon, Border Command) Ribbon(string name)
+	{
+		var command = new Border { Name = "TheCommand", Width = 80, Height = 40, Background = Brushes.LightGray };
+		var ribbon = new Canvas { Name = "TheRibbon", Width = 300, Height = 120, Background = Brushes.White };
+
+		Canvas.SetLeft(command, 110);
+		Canvas.SetTop(command, 40);
+		ribbon.Children.Add(command);
+
+		var window = new Window { Name = name, Width = 400, Height = 300, Content = ribbon };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		return (window, ribbon, command);
+	}
 
 	// Decoded rather than compared as bytes: a PNG of a flat rectangle compresses differently, so the
 	// length of the file says nothing about what is in the picture.
@@ -216,10 +508,11 @@ public class ScreenshotTests : BaseTestClass
 		AvaloniaScreenshotService service,
 		UiArtifactStore artifacts,
 		UiNodeId target,
-		ImmutableArray<UiMask> mask)
+		ImmutableArray<UiMask> mask,
+		ImmutableArray<UiHighlight> highlight)
 	{
 		var info = await service.CaptureAsync(
-			new UiScreenshotRequest(UiTarget.FromId(target), UiCaptureKinds.ControlRender, false, 0, 0, null, mask),
+			new UiScreenshotRequest(UiTarget.FromId(target), UiCaptureKinds.ControlRender, false, 0, 0, null, mask, highlight),
 			CancellationToken.None);
 
 		var data = artifacts.Read(new UiArtifactReadRequest(info.ArtifactId, 0, 4 * 1024 * 1024)).Data.ToArray();
@@ -311,21 +604,42 @@ public class ScreenshotTests : BaseTestClass
 
 		// Where a piece of a line is drawn on the page, in the page's pixels.
 		public static PixelRect Where(TextBlock line, Visual page, string text)
+			=> Where(line, line.Text, line.TextLayout, page, text);
+
+		// Where a piece of the text a box is editing is drawn on the page, in the page's pixels.
+		public static PixelRect Where(TextPresenter presenter, Visual page, string text)
+			=> Where(presenter, presenter.Text, presenter.TextLayout, page, text);
+
+		// Where a control is on the page, in the page's pixels.
+		public static PixelRect Bounds(Control control, Visual page)
 		{
-			var start = line.Text.IndexOf(text, StringComparison.Ordinal);
+			var origin = control.TranslatePoint(default, page) ?? throw new InvalidOperationException("The control is not on the page.");
+
+			return InPixels(new Rect(origin, control.Bounds.Size), page);
+		}
+
+		private static PixelRect Where(Visual owner, string shown, TextLayout layout, Visual page, string text)
+		{
+			var start = shown.IndexOf(text, StringComparison.Ordinal);
 
 			if (start < 0)
-				throw new ArgumentException($"'{line.Text}' does not hold '{text}'.", nameof(text));
+				throw new ArgumentException($"'{shown}' does not hold '{text}'.", nameof(text));
 
-			var origin = line.TranslatePoint(default, page) ?? throw new InvalidOperationException("The line is not on the page.");
-			var drawn = line.TextLayout.HitTestTextRange(start, text.Length).Aggregate((left, right) => left.Union(right));
+			var origin = owner.TranslatePoint(default, page) ?? throw new InvalidOperationException("The line is not on the page.");
+			var drawn = layout.HitTestTextRange(start, text.Length).Aggregate((left, right) => left.Union(right));
+
+			return InPixels(drawn.Translate(origin), page);
+		}
+
+		private static PixelRect InPixels(Rect area, Visual page)
+		{
 			var scaling = TopLevel.GetTopLevel(page)?.RenderScaling ?? 1;
 
 			return new(
-				(int)Math.Floor((origin.X + drawn.X) * scaling),
-				(int)Math.Floor((origin.Y + drawn.Y) * scaling),
-				(int)Math.Ceiling(drawn.Width * scaling),
-				(int)Math.Ceiling(drawn.Height * scaling));
+				(int)Math.Floor(area.X * scaling),
+				(int)Math.Floor(area.Y * scaling),
+				(int)Math.Ceiling(area.Width * scaling),
+				(int)Math.Ceiling(area.Height * scaling));
 		}
 
 		private int Step(int x, int y, int toX, int toY)
@@ -366,7 +680,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var info = await service.CaptureAsync(
-			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, false, 0, 0, null, []),
+			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, false, 0, 0, null, [], []),
 			CancellationToken.None);
 
 		AreEqual("image/png", info.MimeType);
@@ -406,7 +720,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, new UiArtifactStore(), fixture.InstanceId);
 
 		var error = await ThrowsAsync<UiAutomationException>(() => service.CaptureAsync(
-			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ScreenCapture, false, 0, 0, null, []),
+			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ScreenCapture, false, 0, 0, null, [], []),
 			CancellationToken.None));
 
 		AreEqual(UiErrorCodes.UnsupportedCapability, error.Error.Code);
@@ -444,7 +758,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var info = await service.CaptureAsync(
-			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, false, 0, 0, null, []),
+			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, false, 0, 0, null, [], []),
 			CancellationToken.None);
 
 		var chunk = artifacts.Read(new UiArtifactReadRequest(info.ArtifactId, 0, 4 * 1024 * 1024));
@@ -497,7 +811,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var info = await service.CaptureAsync(
-			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, false, 0, 0, null, []),
+			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, false, 0, 0, null, [], []),
 			CancellationToken.None);
 
 		var chunk = artifacts.Read(new UiArtifactReadRequest(info.ArtifactId, 0, 4 * 1024 * 1024));

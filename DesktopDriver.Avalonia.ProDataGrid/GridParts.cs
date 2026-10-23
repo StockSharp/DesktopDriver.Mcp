@@ -1,8 +1,10 @@
 namespace StockSharp.DesktopDriver.Avalonia.Grids;
 
 using System;
+using System.Collections;
 using System.Linq;
 
+using global::Avalonia;
 using global::Avalonia.Controls;
 using global::Avalonia.Controls.Primitives;
 using global::Avalonia.VisualTree;
@@ -102,6 +104,41 @@ internal static class GridParts
 
 		grid.ScrollIntoView(item, column);
 		grid.UpdateLayout();
+
+		// The grid scrolls a record down only as far as its last line and can leave it cut by the edge there, partly
+		// under the horizontal bar; the record after it is brought in as well, so that the one asked for stands whole.
+		if (item is not null && IsCutAtTheBottom(grid, item) && After(grid, item) is { } next)
+		{
+			grid.ScrollIntoView(next, column);
+			grid.UpdateLayout();
+		}
+	}
+
+	private static bool IsCutAtTheBottom(DataGrid grid, object item)
+	{
+		var row = grid.GetVisualDescendants().OfType<DataGridRow>().FirstOrDefault(candidate => ReferenceEquals(candidate.DataContext, item));
+		var rows = grid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
+
+		if (row is null || rows is null || row.TranslatePoint(new Point(0, row.Bounds.Height), rows) is not { } bottom)
+			return false;
+
+		return bottom.Y > rows.Bounds.Height;
+	}
+
+	// The record shown after this one, in the order the grid shows them.
+	private static object After(DataGrid grid, object item)
+	{
+		var found = false;
+
+		foreach (var candidate in (IEnumerable)grid.CollectionView ?? grid.ItemsSource ?? Array.Empty<object>())
+		{
+			if (found)
+				return candidate;
+
+			found = ReferenceEquals(candidate, item);
+		}
+
+		return null;
 	}
 
 	private static DataGridColumn Column(DataGrid grid, string columnId)

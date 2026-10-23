@@ -74,6 +74,15 @@ connections and was started without a test profile.
 versions, the Avalonia and framework versions, the fixture, whether the outside world has been replaced,
 the input backend, the capabilities and the default read budget.
 
+The capabilities name the input the backend sends (`input.click`, `input.text`, `input.key`, `input.scroll`,
+`input.drag`, `input.hover`, `input.leave`) and what its pictures can do beyond leaving a control out:
+`image.highlight` frames what a picture points at, `image.mask.text` finds every place a control's text is drawn,
+and `image.mask.paths` finds the local paths - a drive, a share, a home folder - drawn inside a node. A picture
+is a read, so a run whose input is refused still lists what its pictures can do.
+
+Things that stand together - the tabs of a strip, the commands of a toolbar - are framed as one: their frames would cut
+through each other. A thing inside another framed one keeps a frame of its own.
+
 ## The operations
 
 | method | parameters | result |
@@ -113,6 +122,12 @@ process can.
 An address is `UiNodeId(scopeId, localId)` — the panel, document or window it belongs to, and its
 identifier inside that scope. The address survives everything the user can do to the layout: moving a
 panel to another dock group, floating it out, and the visual behind it being rebuilt.
+
+The identifier is the automation id, or else the name the markup gave. A part named like the control it
+sits in - a picker called `SecuritiesGrid` whose table is called `SecuritiesGrid` too - is addressed through
+that control, `SecuritiesGrid.SecuritiesGrid`, and the picker keeps the plain name; on Avalonia a named part
+of a control template is addressed the same way, `Owner.PART_Name`. A control with neither an automation id
+nor a name gets a path derived from where it sits, and that path starts with `~`.
 
 A node that nothing has read yet is still addressable. The module searches the live interface for it,
 binding what it passes, and refuses with `notFound` when the interface has no such node — it never
@@ -208,6 +223,24 @@ answer: what comes out of the command line is the same JSON the client received.
 
 `input` takes a `UiInputRequest` — an action identifier the caller generates before the first send, the
 node, the part of it, the action, an optional read guard and a deadline.
+
+An action is aimed only once the window has drawn what it has laid out. A control shown, moved or
+uncovered a moment before is pressed where it now appears, as a person presses what has appeared, rather
+than refused as covered by whatever was drawn in its place before.
+
+The actions are a click (a button, a count, and the keys held while it clicks), typing, a key, a scroll,
+a drag, `hover`, `leave` and `ensureVisible`. A drag is pressed on the request's part and let go on the part it
+names, on the same node, and passes through the points between as a hand would; both ends are aimed at before
+anything is pressed, so a drag whose far end is not there takes hold of nothing. A backend whose toolkit asks the
+devices themselves which keys are held and which button is down refuses a click with keys held and a drag
+rather than sending a plain click in their place.
+
+Every action made with the pointer moves it, and the controls it comes over and goes away from are told so, as
+the toolkit tells them for its own pointer: what is lit or drawn only under the pointer - a button, a row's
+buttons, a chart's crosshair - follows it. `hover` brings the pointer onto the part and presses nothing; `leave`
+takes it off the window of the node, so that nothing in it is drawn as pointed at, and sends nothing when the
+pointer is not in that window. A pointer brought into another window leaves the one it was in. The Avalonia
+backends send both; a backend that cannot tell its controls where its pointer is refuses them.
 
 `UiActionReceipt.status` says what became of it. `dispatched` means the backend finished the sequence;
 it does not mean a business action succeeded, and the caller checks that separately with a snapshot or a

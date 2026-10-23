@@ -14,6 +14,7 @@ using global::Avalonia.Threading;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+using StockSharp.DesktopDriver.Identity;
 using StockSharp.DesktopDriver.Queries;
 
 /// <summary>
@@ -48,6 +49,30 @@ public class NameCollisionTests : BaseTestClass
 			Height = 300,
 			Content = new StackPanel { Children = { first, second } },
 		};
+	}
+
+	// A control built from markup of its own that gives one of its parts the name the window gave the control - the
+	// way an instrument picker the panel calls SecuritiesGrid calls its table SecuritiesGrid as well.
+	private static Window NestedTwinWindow(out UserControl outer, out ListBox inner)
+	{
+		inner = new ListBox { Name = "Rows" };
+		outer = new UserControl { Name = "Rows", Content = inner };
+
+		return new Window
+		{
+			Name = "NestedWindow",
+			Width = 400,
+			Height = 300,
+			Content = outer,
+		};
+	}
+
+	private static void Shown(Window window)
+	{
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+		window.CaptureRenderedFrame()?.Dispose();
 	}
 
 	private static Control Buried(string automationId)
@@ -170,6 +195,71 @@ public class NameCollisionTests : BaseTestClass
 
 			IsTrue(ids.Contains("FirstHost.PART_ContentPresenter"), string.Join(", ", ids));
 			IsTrue(ids.Contains("SecondHost.PART_ContentPresenter"), string.Join(", ", ids));
+		}
+		finally
+		{
+			window.Close();
+		}
+	});
+
+	/// <summary>
+	/// A part named like the control it sits in is addressed through that control.
+	/// </summary>
+	/// <remarks>
+	/// The name the window gave the control stays the control's address; the part's own markup named it too, but
+	/// one address cannot mean both.
+	/// </remarks>
+	[TestMethod]
+	[Timeout(60000)]
+	public Task APartNamedLikeTheControlItSitsInIsAddressedThroughIt() => RunAsync(() =>
+	{
+		var window = NestedTwinWindow(out var outer, out var inner);
+
+		Shown(window);
+
+		using var fixture = new AutomationFixture(window);
+
+		try
+		{
+			AreEqual(new UiNodeId("window:NestedWindow", "Rows"), fixture.Bind(outer));
+			AreEqual(new UiNodeId("window:NestedWindow", "Rows.Rows"), fixture.Bind(inner));
+
+			var ids = Walk(fixture).Nodes.Select(node => node.Node.Id.LocalId).ToArray();
+
+			AreEqual(ids.Length, ids.Distinct().Count(), $"Two nodes share an address: {string.Join(", ", ids)}.");
+		}
+		finally
+		{
+			window.Close();
+		}
+	});
+
+	/// <summary>
+	/// Which control an address means does not depend on which of the two was read first.
+	/// </summary>
+	/// <remarks>
+	/// One address for both meant whatever had been read last: a table asked for its rows answered from the panel
+	/// that holds it, and went on doing so for as long as nothing walked the window again.
+	/// </remarks>
+	[TestMethod]
+	[Timeout(60000)]
+	public Task EachOfTheTwoIsFoundByItsAddressWhicheverWasReadFirst() => RunAsync(() =>
+	{
+		var window = NestedTwinWindow(out var outer, out var inner);
+
+		Shown(window);
+
+		using var fixture = new AutomationFixture(window);
+
+		try
+		{
+			fixture.Bind(inner);
+
+			AreSame(outer, fixture.Nodes.Resolve(UiTarget.FromId(new UiNodeId("window:NestedWindow", "Rows"))).Instance);
+
+			fixture.Bind(outer);
+
+			AreSame(inner, fixture.Nodes.Resolve(UiTarget.FromId(new UiNodeId("window:NestedWindow", "Rows.Rows"))).Instance);
 		}
 		finally
 		{

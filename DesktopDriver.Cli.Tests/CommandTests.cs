@@ -34,7 +34,7 @@ public class CommandTests : BaseTestClass
 			"grid-columns", "grid-rows", "grid-groups",
 			"chart-series", "chart-points", "book-levels", "property-items", "dock-layout",
 			"tree-items", "document-content", "diagram-nodes", "diagram-connections",
-			"click", "type", "key", "scroll", "action-status", "wait",
+			"click", "type", "key", "scroll", "drag", "hover", "leave", "action-status", "wait",
 			"screenshot", "artifact", "diagnostics",
 		];
 
@@ -65,6 +65,15 @@ public class CommandTests : BaseTestClass
 	}
 
 	[TestMethod]
+	public void WhatAPictureFramesIsNamedAsANodeIs()
+	{
+		var error = Throws<UiUsageException>(() => UiCommands.Plan("screenshot", UiArguments.Parse(["--node=w/1", "--highlight=justaname"])));
+
+		IsTrue(error.Message.Contains("--highlight"), error.Message);
+		IsNotNull(UiCommands.Plan("screenshot", UiArguments.Parse(["--node=w/1", "--highlight=w/2,w/grid#price"])));
+	}
+
+	[TestMethod]
 	public void TheWholeApplicationIsAValidTreeToAskFor()
 	{
 		IsNotNull(UiCommands.Plan("tree", UiArguments.Parse([])));
@@ -75,6 +84,22 @@ public class CommandTests : BaseTestClass
 	{
 		Throws<UiUsageException>(() => UiCommands.Plan("scroll", UiArguments.Parse(["--node=w/1"])));
 		IsNotNull(UiCommands.Plan("scroll", UiArguments.Parse(["--node=w/1", "--dy=-3"])));
+	}
+
+	[TestMethod]
+	public void ThePaneWhoseCrossIsPressedIsNamed()
+	{
+		Throws<UiUsageException>(() => UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartAreaClose"])));
+		IsNotNull(UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartAreaClose", "--area=Volume"])));
+	}
+
+	[TestMethod]
+	public void ThePointerIsBroughtOntoANodeAndTakenOffItsWindow()
+	{
+		Throws<UiUsageException>(() => UiCommands.Plan("hover", UiArguments.Parse([])));
+		Throws<UiUsageException>(() => UiCommands.Plan("leave", UiArguments.Parse([])));
+		IsNotNull(UiCommands.Plan("hover", UiArguments.Parse(["--node=w/1", "--part=chartPrice", "--area=Area0", "--price=70000"])));
+		IsNotNull(UiCommands.Plan("leave", UiArguments.Parse(["--node=window:Main/Main"])));
 	}
 
 	[TestMethod]
@@ -136,6 +161,46 @@ public class CommandTests : BaseTestClass
 
 		IsNotNull(UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=treeItem", "--item=Sources/Server"])));
 		IsNotNull(UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=treeItemControl", "--item=Sources/Server", "--control=EnabledSwitch"])));
+	}
+
+	[TestMethod]
+	public void AClickHoldsTheKeysItIsGivenAndNoOthers()
+	{
+		IsNotNull(UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--modifiers=control,shift"])));
+
+		Throws<UiUsageException>(() => UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--modifiers=hyper"])));
+	}
+
+	[TestMethod]
+	public void APriceOnAChartIsNamedByItsAreaAndThePrice()
+	{
+		Throws<UiUsageException>(() => UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartPrice", "--area=Area0"])));
+		Throws<UiUsageException>(() => UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartPrice", "--price=70000"])));
+
+		// A price is written the same way whatever the machine's language: a comma would be a thousands separator to one
+		// reader and the decimal point to another.
+		Throws<UiUsageException>(() => UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartPrice", "--area=Area0", "--price=70000,5"])));
+
+		IsNotNull(UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartPrice", "--area=Area0", "--price=70000.5", "--modifiers=control"])));
+	}
+
+	[TestMethod]
+	public void AnOrderOnAChartIsNamedByWhatTheChartCallsIt()
+	{
+		Throws<UiUsageException>(() => UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartOrderCancel"])));
+
+		IsNotNull(UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartOrderCancel", "--order=1234567"])));
+		IsNotNull(UiCommands.Plan("click", UiArguments.Parse(["--node=w/1", "--part=chartOrder", "--order=1234567"])));
+	}
+
+	[TestMethod]
+	public void ADragSaysWhereItIsLetGo()
+	{
+		Throws<UiUsageException>(() => UiCommands.Plan("drag", UiArguments.Parse(["--node=w/1", "--part=chartOrder", "--order=1234567"])));
+		Throws<UiUsageException>(() => UiCommands.Plan("drag", UiArguments.Parse(["--node=w/1", "--part=chartOrder", "--order=1234567", "--to-part=chartPrice", "--to-area=Area0"])));
+
+		IsNotNull(UiCommands.Plan("drag", UiArguments.Parse(
+			["--node=w/1", "--part=chartOrder", "--order=1234567", "--to-part=chartPrice", "--to-area=Area0", "--to-price=70000"])));
 	}
 
 	[TestMethod]
@@ -204,6 +269,7 @@ public class CommandTests : BaseTestClass
 			"type" => ["--node=w/1", "--text=abc"],
 			"key" => ["--node=w/1", "--key=Enter"],
 			"scroll" => ["--node=w/1", "--dy=3"],
+			"drag" => ["--node=w/1", "--part=chartOrder", "--order=1234567", "--to-part=chartPrice", "--to-area=Area0", "--to-price=70000"],
 			"action-status" => ["--action=4a5f2d7c8b914e0d9a6c3f1b2e7d8a05"],
 			"wait" => ["--node=w/1", "--exists"],
 			"artifact" => ["--id=a1", "--out=a.png"],

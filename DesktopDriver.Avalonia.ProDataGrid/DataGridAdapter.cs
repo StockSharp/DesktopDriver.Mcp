@@ -91,7 +91,9 @@ public class DataGridAdapter(AvaloniaNodeBinder binder)
 			_ => throw UiErrors.Unsupported($"A grid has no part called {part?.Kind}."),
 		};
 
-		return AvaloniaInputTargetResolver.Locate(visual, context?.Node, context?.Revisions, what);
+		return action is UiEnsureVisibleAction
+			? AvaloniaInputTargetResolver.Placed(visual, context?.Node, context?.Revisions, what)
+			: AvaloniaInputTargetResolver.Locate(visual, context?.Node, context?.Revisions, what);
 	}
 
 	/// <inheritdoc />

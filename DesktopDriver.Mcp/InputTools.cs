@@ -18,9 +18,9 @@ using StockSharp.DesktopDriver.Waiting;
 /// Tools that drive an application the way a person would.
 /// </summary>
 /// <remarks>
-/// Input is a real click and a real keystroke on the machine's own desktop, so the application sees
-/// exactly what it would see from a person. That also means it needs the desktop: a machine with no
-/// session attached refuses rather than pretending.
+/// Input goes into the application's own input pipeline, where a person's goes, so focus, capture and the
+/// controls' own handlers behave as they do for a person; the machine's mouse and keyboard are not touched, and
+/// a locked session drives the same way as a watched one.
 /// <para>
 /// "Dispatched" means the click was delivered, and nothing more. Whether the button did what was hoped
 /// is a separate question, asked with ui_snapshot or ui_wait.
@@ -29,18 +29,28 @@ using StockSharp.DesktopDriver.Waiting;
 [McpServerToolType]
 public static class InputTools
 {
+	// The parts a tool can be aimed at besides the whole node, as their descriptions list them.
+	private const string _parts =
+		UiGridHeaderPart.KindName + ", " + UiGridCellPart.KindName + ", " + UiGridCellControlPart.KindName + ", " +
+		UiPropertyValuePart.KindName + ", " + UiPropertyValueControlPart.KindName + ", " + UiListItemPart.KindName + ", " +
+		UiTreeItemPart.KindName + ", " + UiTreeItemControlPart.KindName + ", " + UiDockTabPart.KindName + ", " +
+		UiDockClosePart.KindName + ", " + UiChartAnnotationPart.KindName + ", " + UiChartPricePart.KindName + ", " +
+		UiChartOrderPart.KindName + ", " + UiChartOrderCancelPart.KindName + " or " + UiChartAreaClosePart.KindName;
+
 	[McpServerTool(Name = "ui_click", Title = "Click something")]
 	[Description(
-		"Clicks a node, or a part of one: a column header, a cell, a panel's tab or its close button. " +
-		"Answers with a receipt saying what became of the click. It being delivered does not mean the " +
-		"application did what was hoped — check that with ui_snapshot or ui_wait.")]
+		"Clicks a node, or a part of one: a column header, a cell, a panel's tab or its close button, a price " +
+		"on a chart or an order it shows. Keys can be held while it clicks: Ctrl and a click at a price of a " +
+		"chart place an order there. Answers with a receipt saying what became of the click. It being " +
+		"delivered does not mean the application did what was hoped — check that with ui_snapshot or ui_wait.")]
 	public static Task<string> ClickAsync(
 		UiApplications applications,
 		[Description("Which instance.")] string instance,
 		[Description("Which node, as scope/identifier.")] string node,
 		[Description("Left, Middle or Right.")] UiPointerButtons button = UiPointerButtons.Left,
 		[Description("How many clicks; 2 for a double click. 1 by default.")] int count = 1,
-		[Description("A part of it: gridHeader, gridCell, gridCellControl, propertyValue, propertyValueControl, listItem, treeItem, treeItemControl, dockTab, dockClose or chartAnnotation.")] string part = null,
+		[Description("Held down while it clicks: Shift, Control, Alt, Meta, separated by commas.")] string modifiers = null,
+		[Description("A part of it: " + _parts + ".")] string part = null,
 		[Description("Which column, for gridHeader, gridCell and gridCellControl.")] string columnId = null,
 		[Description("Which row, for gridCell and gridCellControl.")] string rowKey = null,
 		[Description("The name of the control inside the cell, the tree item or the property's editor, for gridCellControl, treeItemControl and propertyValueControl.")] string controlName = null,
@@ -49,14 +59,67 @@ public static class InputTools
 		[Description("The item's position in the list, from 0, for listItem.")] long? itemIndex = null,
 		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
 		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
+		[Description("Which area of the chart, as its state names it, for chartPrice and chartAreaClose.")] string areaId = null,
+		[Description("Which price, for chartPrice.")] decimal? price = null,
+		[Description("Which order, as the chart's state names it, for chartOrder and chartOrderCancel.")] string orderId = null,
 		CancellationToken cancellationToken = default)
 		=> SendAsync(
 			applications,
 			instance,
 			node,
-			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId),
-			new UiClickAction(button, count > 0 ? count : 1),
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
+			new UiClickAction(button, count > 0 ? count : 1, Modifiers(modifiers)),
 			cancellationToken);
+
+	[McpServerTool(Name = "ui_drag", Title = "Drag something")]
+	[Description(
+		"Presses the left button on a part of a node, carries the pointer through the points between and " +
+		"lets it go on another part of the same node - the line of an order on a chart carried to the price " +
+		"it is to move to. A toolkit whose controls ask the mouse itself which button is down, WPF or MAUI, " +
+		"refuses it. Answers with a receipt; whether the application did what was hoped is asked with " +
+		"ui_snapshot or ui_wait.")]
+	public static Task<string> DragAsync(
+		UiApplications applications,
+		[Description("Which instance.")] string instance,
+		[Description("Which node, as scope/identifier.")] string node,
+		[Description("Where it is pressed: " + _parts + "; the whole node when left out.")] string part = null,
+		[Description("Which column, for gridHeader, gridCell and gridCellControl.")] string columnId = null,
+		[Description("Which row, for gridCell and gridCellControl.")] string rowKey = null,
+		[Description("The name of the control inside the cell, the tree item or the property's editor.")] string controlName = null,
+		[Description("The property's path on the object the editor shows.")] string propertyPath = null,
+		[Description("The item's path through the tree.")] string itemKey = null,
+		[Description("The item's position in the list, from 0.")] long? itemIndex = null,
+		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
+		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
+		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
+		[Description("Which price, for chartPrice.")] decimal? price = null,
+		[Description("Which order, for chartOrder and chartOrderCancel.")] string orderId = null,
+		[Description("Where it is let go: a part of the same node, named as part is.")] string toPart = null,
+		[Description("The column it is let go on.")] string toColumnId = null,
+		[Description("The row it is let go on.")] string toRowKey = null,
+		[Description("The control inside the cell, the tree item or the property's editor it is let go on.")] string toControlName = null,
+		[Description("The property it is let go on.")] string toPropertyPath = null,
+		[Description("The tree item it is let go on.")] string toItemKey = null,
+		[Description("The list item it is let go on, from 0.")] long? toItemIndex = null,
+		[Description("The panel it is let go on.")] string toPanelId = null,
+		[Description("The annotation it is let go on.")] string toAnnotationId = null,
+		[Description("The area of the chart it is let go in.")] string toAreaId = null,
+		[Description("The price it is let go at.")] decimal? toPrice = null,
+		[Description("The order it is let go on.")] string toOrderId = null,
+		CancellationToken cancellationToken = default)
+	{
+		if (string.IsNullOrEmpty(toPart))
+			throw new McpException("ui_drag needs toPart: where the drag is let go.");
+
+		return SendAsync(
+			applications,
+			instance,
+			node,
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
+			new UiDragAction(Part(
+				toPart, toColumnId, toRowKey, toControlName, toPropertyPath, toItemKey, toItemIndex, toPanelId, toAnnotationId, toAreaId, toPrice, toOrderId)),
+			cancellationToken);
+	}
 
 	[McpServerTool(Name = "ui_type_text", Title = "Type into something")]
 	[Description(
@@ -80,9 +143,9 @@ public static class InputTools
 
 	[McpServerTool(Name = "ui_press_key", Title = "Press a key")]
 	[Description(
-		"Presses one key at a node, optionally with modifiers. Keys are named as Avalonia names them: " +
-		"Enter, Escape, Tab, Delete, Back, Up, Down, Left, Right, Home, End, PageUp, PageDown, F1 to " +
-		"F12, A to Z, D0 to D9.")]
+		"Presses one key at a node, optionally with modifiers. Keys are named by their place on the keyboard, " +
+		"whatever the layout: Enter, Escape, Tab, Space, Backspace, Delete, Insert, ArrowUp, ArrowDown, " +
+		"ArrowLeft, ArrowRight, Home, End, PageUp, PageDown, F1 to F12, KeyA to KeyZ, Digit0 to Digit9.")]
 	public static Task<string> PressKeyAsync(
 		UiApplications applications,
 		[Description("Which instance.")] string instance,
@@ -120,6 +183,55 @@ public static class InputTools
 			cancellationToken);
 	}
 
+	[McpServerTool(Name = "ui_hover", Title = "Point at something")]
+	[Description(
+		"Brings the pointer onto a node, or a part of one, and leaves it there without pressing anything. " +
+		"What shows only under the pointer - the buttons of a row, a tooltip, the crosshair of a chart - shows, " +
+		"and what the pointer was over before is told it was left. Look at the result with ui_snapshot or " +
+		"ui_screenshot.")]
+	public static Task<string> HoverAsync(
+		UiApplications applications,
+		[Description("Which instance.")] string instance,
+		[Description("Which node, as scope/identifier.")] string node,
+		[Description("A part of it: " + _parts + ".")] string part = null,
+		[Description("Which column, for gridHeader, gridCell and gridCellControl.")] string columnId = null,
+		[Description("Which row, for gridCell and gridCellControl.")] string rowKey = null,
+		[Description("The name of the control inside the cell, the tree item or the property's editor, for gridCellControl, treeItemControl and propertyValueControl.")] string controlName = null,
+		[Description("The property's path on the object the editor shows, for propertyValue and propertyValueControl.")] string propertyPath = null,
+		[Description("The item's path through the tree, for treeItem and treeItemControl.")] string itemKey = null,
+		[Description("The item's position in the list, from 0, for listItem.")] long? itemIndex = null,
+		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
+		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
+		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
+		[Description("Which price, for chartPrice.")] decimal? price = null,
+		[Description("Which order, for chartOrder and chartOrderCancel.")] string orderId = null,
+		CancellationToken cancellationToken = default)
+		=> SendAsync(
+			applications,
+			instance,
+			node,
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
+			UiHoverAction.Instance,
+			cancellationToken);
+
+	[McpServerTool(Name = "ui_leave", Title = "Take the pointer off a window")]
+	[Description(
+		"Takes the pointer off the window a node is in, as a hand takes the mouse away: nothing in it is drawn " +
+		"as pointed at any more - no highlighted button, no crosshair. Do it before a picture that should show " +
+		"the window at rest. A window the pointer is not over is left with nothing sent.")]
+	public static Task<string> LeaveAsync(
+		UiApplications applications,
+		[Description("Which instance.")] string instance,
+		[Description("Any node of the window, as scope/identifier; the window itself will do.")] string node,
+		CancellationToken cancellationToken = default)
+		=> SendAsync(
+			applications,
+			instance,
+			node,
+			UiControlPart.Instance,
+			UiLeaveAction.Instance,
+			cancellationToken);
+
 	[McpServerTool(Name = "ui_bring_into_view", Title = "Bring a part onto the screen")]
 	[Description(
 		"Brings a part of a control onto the screen so that it can be clicked - a row far down a table, " +
@@ -131,7 +243,7 @@ public static class InputTools
 		UiApplications applications,
 		[Description("Which instance.")] string instance,
 		[Description("Which node, as scope/identifier.")] string node,
-		[Description("Which part: gridHeader, gridCell, gridCellControl, propertyValue, propertyValueControl, listItem, treeItem, treeItemControl, dockTab, dockClose or chartAnnotation.")] string part = null,
+		[Description("Which part: " + _parts + ".")] string part = null,
 		[Description("Which column, for gridHeader, gridCell and gridCellControl.")] string columnId = null,
 		[Description("Which row, for gridCell and gridCellControl.")] string rowKey = null,
 		[Description("The name of the control inside the cell, the tree item or the property's editor, for gridCellControl, treeItemControl and propertyValueControl.")] string controlName = null,
@@ -140,12 +252,15 @@ public static class InputTools
 		[Description("The item's position in the list, from 0, for listItem.")] long? itemIndex = null,
 		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
 		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
+		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
+		[Description("Which price, for chartPrice.")] decimal? price = null,
+		[Description("Which order, for chartOrder and chartOrderCancel.")] string orderId = null,
 		CancellationToken cancellationToken = default)
 		=> SendAsync(
 			applications,
 			instance,
 			node,
-			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId),
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
 			UiEnsureVisibleAction.Instance,
 			cancellationToken);
 
@@ -232,7 +347,10 @@ public static class InputTools
 		string itemKey,
 		long? itemIndex,
 		string panelId,
-		string annotationId)
+		string annotationId,
+		string areaId,
+		decimal? price,
+		string orderId)
 		=> string.IsNullOrEmpty(part) ? UiControlPart.Instance : part switch
 		{
 			UiControlPart.KindName => UiControlPart.Instance,
@@ -250,10 +368,12 @@ public static class InputTools
 			UiDockClosePart.KindName => new UiDockClosePart(Needed(panelId, "panelId", part)),
 			UiChartAnnotationPart.KindName => new UiChartAnnotationPart(
 				Needed(annotationId, "annotationId", part)),
-			_ => throw new McpException(
-				$"There is no part called '{part}'. The parts are {UiControlPart.KindName}, " +
-				$"{UiGridHeaderPart.KindName}, {UiGridCellPart.KindName}, {UiGridCellControlPart.KindName}, {UiPropertyValuePart.KindName}, {UiPropertyValueControlPart.KindName}, {UiListItemPart.KindName}, {UiTreeItemPart.KindName}, {UiTreeItemControlPart.KindName}, {UiDockTabPart.KindName}, " +
-				$"{UiDockClosePart.KindName} and {UiChartAnnotationPart.KindName}."),
+			UiChartPricePart.KindName => new UiChartPricePart(
+				Needed(areaId, "areaId", part), price ?? throw new McpException($"Aiming at a {part} needs price.")),
+			UiChartOrderPart.KindName => new UiChartOrderPart(Needed(orderId, "orderId", part)),
+			UiChartOrderCancelPart.KindName => new UiChartOrderCancelPart(Needed(orderId, "orderId", part)),
+			UiChartAreaClosePart.KindName => new UiChartAreaClosePart(Needed(areaId, "areaId", part)),
+			_ => throw new McpException($"There is no part called '{part}'. The parts are {UiControlPart.KindName}, {_parts}."),
 		};
 
 	private static string Needed(string value, string name, string part)

@@ -8,7 +8,7 @@ using StockSharp.DesktopDriver.Input;
 /// </summary>
 /// <param name="Node">What it belongs to.</param>
 /// <param name="Part">Which part of it, or <see langword="null"/> for the whole of it.</param>
-/// <param name="Scope">Whether the node itself is covered or its text, wherever that text is drawn.</param>
+/// <param name="Scope">What is covered: the node itself, its text wherever that text is drawn, or the paths drawn inside it.</param>
 /// <remarks>
 /// A part is named the same way an action names one, and answered by the same adapter - so "the account
 /// column of that table" means here exactly what it means when something is clicked. A column is covered
@@ -18,6 +18,10 @@ using StockSharp.DesktopDriver.Input;
 /// <see cref="UiMaskScopes.Text"/> is for a value that is repeated where no control of its own holds it:
 /// the name of whoever is signed in is shown in a status bar and quoted again in the middle of a line of
 /// the log. It names no part.
+/// </para>
+/// <para>
+/// <see cref="UiMaskScopes.Paths"/> is for where a product keeps its files: the folder is the machine's, not the
+/// product's, and turns up in boxes, lists and lines of the log alike. It names no part either.
 /// </para>
 /// </remarks>
 public sealed record UiMask(UiNodeId Node, UiTargetPart Part, UiMaskScopes Scope);

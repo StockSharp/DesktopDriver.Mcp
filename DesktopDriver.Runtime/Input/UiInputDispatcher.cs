@@ -67,6 +67,10 @@ public sealed class UiInputDispatcher(
 			if (request.Action is not UiEnsureVisibleAction && _driver.Refusal is { } refusal)
 				throw new UiAutomationException(refusal);
 
+			// A control shown or moved a moment ago is laid out but not on the screen yet, and an action aimed at it then
+			// would reach what was drawn in its place before.
+			await _driver.DrawnAsync(request.Target, cancellationToken).ConfigureAwait(false);
+
 			var resolved = await _executor.InvokeAsync(() => Resolve(request), cancellationToken).ConfigureAwait(false);
 
 			// Bringing a part onto the screen is the resolving step and nothing else: the adapter has
@@ -160,14 +164,30 @@ public sealed class UiInputDispatcher(
 		}
 
 		var context = new UiCaptureContext(reference, current, UiCaptureOptions.Default);
+		var resolved = Resolve(subject, request.Part, request.Action, context);
 
+		if (request.Action is not UiDragAction drag)
+			return resolved;
+
+		// Both ends before anything is pressed: a drag whose far end is not there would already be holding
+		// whatever it was pressed on.
+		var destination = Resolve(subject, drag.To, request.Action, context);
+
+		if (!string.Equals(destination.SurfaceId, resolved.SurfaceId, StringComparison.Ordinal))
+			throw UiErrors.Invalid("A drag is let go in the window it was taken hold of in.");
+
+		return resolved with { DestinationInSurfaceDip = destination.PointInSurfaceDip };
+	}
+
+	private UiResolvedInputTarget Resolve(UiSubject subject, UiTargetPart part, UiInputAction action, UiCaptureContext context)
+	{
 		if (_adapters.Resolve(subject) is IUiInputTargetAdapter adapter &&
-			adapter.SupportsTargetPart(subject, request.Part))
+			adapter.SupportsTargetPart(subject, part))
 		{
-			return adapter.ResolveInputTarget(subject, request.Part, request.Action, context);
+			return adapter.ResolveInputTarget(subject, part, action, context);
 		}
 
-		return _resolver.Resolve(subject, request.Part, request.Action, context);
+		return _resolver.Resolve(subject, part, action, context);
 	}
 
 	// The revisions are filled in by the caller of this, the same way a driver's receipt is.

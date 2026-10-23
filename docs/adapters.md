@@ -94,6 +94,13 @@ unrelated.
 | `treeItem` / `treeItemControl` | `AvaloniaTreeAdapter` | an item of a tree, and a named control inside it |
 | `dockTab` / `dockClose` | `DockAdapter` | a panel's tab, and the close button on it |
 | `ribbonItem` | the product's adapter for its bars | an entry of a ribbon, a menu or a tool bar, by the name its markup gave it |
+| `chartPrice` | the product's chart adapter | the place in an area of a chart where a price is drawn |
+| `chartOrder` / `chartOrderCancel` | the product's chart adapter | the line of an order a chart shows, and the mark that cancels it |
+| `chartAreaClose` | the product's chart adapter | the cross on the header of a pane under the chart, which closes the pane |
+
+A control that draws its own parts knows alone where each one is, and no other point of it would do: a
+price a few pixels off is another price. Its adapter works the point out and hands it to
+`AvaloniaInputTargetResolver.LocateAt`, which refuses it when the window has something else there.
 
 A grid builds visuals only for what it is showing, so a part outside the view has nothing to click. The
 `ensureVisible` action asks the control to bring it onto the screen through the control's own positioning;

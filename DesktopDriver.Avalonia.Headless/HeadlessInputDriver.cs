@@ -9,6 +9,7 @@ using global::Avalonia;
 using global::Avalonia.Controls;
 using global::Avalonia.Headless;
 using global::Avalonia.Input;
+using global::Avalonia.Threading;
 
 using StockSharp.DesktopDriver.Avalonia;
 using StockSharp.DesktopDriver.Diagnostics;
@@ -27,18 +28,42 @@ using StockSharp.DesktopDriver.Values;
 /// </remarks>
 public sealed class HeadlessInputDriver(IUiNodeRegistry registry, IUiExecutor executor) : IUiInputDriver
 {
+	// A point no window has: a pointer moved there has left the window it is moved in.
+	private static readonly Point _outside = new(-1, -1);
+
 	private readonly IUiNodeRegistry _registry = registry ?? throw new ArgumentNullException(nameof(registry));
 	private readonly IUiExecutor _executor = executor ?? throw new ArgumentNullException(nameof(executor));
+
+	// The window the pointer was last moved in. The headless platform keeps what the pointer is over for each window
+	// apart, and on a desktop the pointer is in one window at a time.
+	private Window _pointed;
 
 	/// <inheritdoc />
 	public string BackendId => "avalonia.headless";
 
 	/// <inheritdoc />
 	public ImmutableArray<string> Capabilities { get; } =
-		["input.click", "input.text", "input.key", "input.scroll"];
+		["input.click", "input.text", "input.key", "input.scroll", "input.drag", "input.hover", "input.leave"];
 
 	/// <inheritdoc />
 	public UiError Refusal => null;
+
+	/// <inheritdoc />
+	/// <remarks>
+	/// The headless platform draws only when its clock is moved on, so the clock is moved: what is pending is laid out and
+	/// drawn there and then.
+	/// </remarks>
+	public Task DrawnAsync(UiTarget target, CancellationToken cancellationToken)
+		=> _executor.InvokeAsync(
+			() =>
+			{
+				Dispatcher.UIThread.RunJobs();
+				AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+				Dispatcher.UIThread.RunJobs();
+
+				return true;
+			},
+			cancellationToken);
 
 	/// <inheritdoc />
 	public Task<UiActionReceipt> ExecuteAsync(
@@ -58,7 +83,7 @@ public sealed class HeadlessInputDriver(IUiNodeRegistry registry, IUiExecutor ex
 		CancellationToken cancellationToken)
 	{
 		var control = Resolve(resolvedTarget.Node?.Id);
-		var window = TopLevel.GetTopLevel(control) as Window
+		var window = AvaloniaTopLevels.Of(control) as Window
 			?? throw UiErrors.Fail(UiErrorCodes.InputUnavailable, "That control is not in a headless window.");
 
 		var point = new Point(resolvedTarget.PointInSurfaceDip.X, resolvedTarget.PointInSurfaceDip.Y);
@@ -82,14 +107,37 @@ public sealed class HeadlessInputDriver(IUiNodeRegistry registry, IUiExecutor ex
 						_ => throw UiErrors.Invalid("That is not a pointer button."),
 					};
 
-					window.MouseMove(point);
+					var keys = ToRaw(click.Modifiers);
+
+					Enter(window);
+					window.MouseMove(point, keys);
 
 					for (var index = 0; index < Math.Max(1, click.Count); index++)
 					{
-						window.MouseDown(point, button);
+						window.MouseDown(point, button, keys);
 						dispatched = true;
-						window.MouseUp(point, button);
+						window.MouseUp(point, button, keys);
 					}
+
+					break;
+				}
+
+				case UiDragAction:
+				{
+					var destination = resolvedTarget.DestinationInSurfaceDip
+						?? throw UiErrors.Invalid("A drag came without the place to let it go.");
+
+					var end = new Point(destination.X, destination.Y);
+
+					Enter(window);
+					window.MouseMove(point);
+					window.MouseDown(point, MouseButton.Left);
+					dispatched = true;
+
+					foreach (var step in AvaloniaDragPath.Between(point, end))
+						window.MouseMove(step, RawInputModifiers.LeftMouseButton);
+
+					window.MouseUp(end, MouseButton.Left);
 
 					break;
 				}
@@ -134,9 +182,34 @@ public sealed class HeadlessInputDriver(IUiNodeRegistry registry, IUiExecutor ex
 
 				case UiScrollAction scroll:
 				{
+					Enter(window);
 					window.MouseMove(point);
 					window.MouseWheel(point, new Vector(scroll.DeltaX, scroll.DeltaY));
 					dispatched = true;
+
+					break;
+				}
+
+				case UiHoverAction:
+				{
+					Enter(window);
+					window.MouseMove(point);
+					dispatched = true;
+
+					break;
+				}
+
+				case UiLeaveAction:
+				{
+					// A window the pointer is not over has nothing of it to lose.
+					if (!window.IsPointerOver)
+						break;
+
+					window.MouseMove(_outside);
+					dispatched = true;
+
+					if (ReferenceEquals(_pointed, window))
+						_pointed = null;
 
 					break;
 				}
@@ -180,6 +253,15 @@ public sealed class HeadlessInputDriver(IUiNodeRegistry registry, IUiExecutor ex
 			UiField<Snapshots.UiRevisions>.Unavailable(UiUnavailableReasons.Unknown, null),
 			dispatched,
 			null);
+	}
+
+	// The pointer brought into a window leaves the one it was in, unless that one is gone.
+	private void Enter(Window window)
+	{
+		if (_pointed is { } previous && !ReferenceEquals(previous, window) && previous.PlatformImpl is not null && previous.IsPointerOver)
+			previous.MouseMove(_outside);
+
+		_pointed = window;
 	}
 
 	// Runs as an exception filter so that whatever was pressed is let go before the exception leaves,

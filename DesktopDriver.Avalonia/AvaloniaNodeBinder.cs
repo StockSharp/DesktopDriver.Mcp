@@ -88,7 +88,11 @@ public sealed class AvaloniaNodeBinder(IUiNodeRegistry registry, IUiRevisionSink
 	{
 		ArgumentNullException.ThrowIfNull(control);
 
-		foreach (var child in control.GetVisualChildren().OfType<Control>())
+		// The frame a window draws itself is kept beside the window rather than in it; here it is the window's, in the
+		// order it is drawn.
+		var (below, above) = control is TopLevel root ? AvaloniaTopLevels.FrameOf(root) : ([], []);
+
+		foreach (var child in below.Concat(control.GetVisualChildren().OfType<Control>()).Concat(above))
 		{
 			if (includeVisualInternals || IsSignificant(child))
 			{

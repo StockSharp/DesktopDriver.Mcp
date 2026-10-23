@@ -53,7 +53,7 @@ the protocol grew next, named by whoever wrote the script.
 Reading: `session`, `windows`, `find`, `tree`, `snapshot`, `grid-columns`, `grid-rows`, `grid-groups`,
 `chart-series`, `chart-points`, `book-levels`, `property-items`, `dock-layout`, `diagnostics`.
 
-Driving: `click`, `type`, `key`, `scroll`, `action-status`, `wait`.
+Driving: `click`, `type`, `key`, `scroll`, `drag`, `hover`, `leave`, `show`, `action-status`, `wait`.
 
 Pictures and files: `screenshot`, `artifact`.
 
@@ -92,7 +92,40 @@ desktop-driver wait --node "window:MainWindow/OrderGrid" \
 
 # Take a picture of it.
 desktop-driver screenshot --node "window:MainWindow/OrderGrid" --out orders.png
+
+# A picture of a whole ribbon about one of its commands: the command is framed in red, a little outside it.
+desktop-driver screenshot --node "window:MainWindow/Ribbon" --highlight "window:MainWindow/MarketDataButton" --out ribbon.png
+
+# What shows only under the pointer: point at a row, and take the pointer off the window before a picture of it at rest.
+desktop-driver hover --node "window:MainWindow/OrderGrid" --part gridCell --row row-4210 --column Price
+desktop-driver leave --node "window:MainWindow/MainWindow"
 ```
+
+`hover` and `leave` move the pointer the program is driven with, and every control it comes over or goes away from is
+told so: a button lit by the pointer is lit, a chart draws its crosshair where the pointer is and stops when it goes.
+Only the Avalonia backends send them; WPF and MAUI refuse them.
+
+## Trading on a chart
+
+A chart names its prices and the orders it shows, so a script says what a person would aim at rather than
+where it is on screen: where a price is moves with every candle that widens the scale.
+
+```sh
+# The orders the chart shows, with what it calls each one.
+desktop-driver snapshot --node "panel:ChartPanel/Chart"
+
+# Ctrl and a click place an order at a price.
+desktop-driver click --node "panel:ChartPanel/Chart" --part chartPrice --area Area0 --price 70000.5 --modifiers control
+
+# Take an order's line and carry it to another price; press the mark beside it to cancel it.
+desktop-driver drag --node "panel:ChartPanel/Chart" --part chartOrder --order 1234567 \
+  --to-part chartPrice --to-area Area0 --to-price 69000
+desktop-driver click --node "panel:ChartPanel/Chart" --part chartOrderCancel --order 1234567
+```
+
+A price is written with a point whatever the machine's language. A toolkit whose controls ask the keyboard and the
+mouse themselves which keys are held and which button is down - WPF, MAUI - refuses a click with keys held and a
+drag rather than sending a plain click in their place.
 
 ## Saying what kind a value is
 

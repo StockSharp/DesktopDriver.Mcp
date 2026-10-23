@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using StockSharp.DesktopDriver.Diagnostics;
+using StockSharp.DesktopDriver.Identity;
 using StockSharp.DesktopDriver.Input;
 
 /// <summary>
@@ -29,6 +30,10 @@ public sealed class UiNoInputDriver(string why) : IUiInputDriver
 
 	/// <inheritdoc />
 	public UiError Refusal => UiError.Create(UiErrorCodes.InputUnavailable, _why);
+
+	/// <inheritdoc />
+	/// <remarks>Nothing is sent, so nothing waits for the window to draw.</remarks>
+	public Task DrawnAsync(UiTarget target, CancellationToken cancellationToken) => Task.CompletedTask;
 
 	/// <inheritdoc />
 	public Task<UiActionReceipt> ExecuteAsync(

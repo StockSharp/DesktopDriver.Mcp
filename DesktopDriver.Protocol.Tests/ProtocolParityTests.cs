@@ -90,7 +90,7 @@ public class ProtocolParityTests : BaseTestClass
 				Guid.NewGuid(),
 				UiTarget.FromId(hosted.ButtonId),
 				UiControlPart.Instance,
-				new UiClickAction(UiPointerButtons.Left, 1),
+				new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None),
 				null,
 				TimeSpan.FromSeconds(5)),
 			CancellationToken.None);

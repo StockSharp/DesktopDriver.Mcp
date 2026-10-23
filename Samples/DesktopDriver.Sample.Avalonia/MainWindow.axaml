@@ -10,6 +10,7 @@
       <TextBox x:Name="SymbolBox" Width="180" PlaceholderText="Symbol" />
       <Button x:Name="AddButton" Content="Add" Click="OnAdd" />
       <CheckBox x:Name="LiveOnly" Content="Only open markets" />
+      <Button x:Name="DetailsButton" Content="Details" Click="OnDetails" />
     </StackPanel>
 
     <TreeView x:Name="Markets" DockPanel.Dock="Left" Width="220" Margin="0,0,12,0">
