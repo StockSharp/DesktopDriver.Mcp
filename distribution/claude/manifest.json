@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "stocksharp-desktop-driver",
   "display_name": "StockSharp DesktopDriver",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Inspect controls, capture screenshots and drive Avalonia, WPF and MAUI applications locally.",
   "long_description": "Requires the .NET 10 SDK on PATH. Applications must integrate DesktopDriver and explicitly enable automation with --ui-automation. The selected catalogue controls which applications may launch. Input into applications with real external connections requires a test profile. Local connections remain restricted to the current OS user.",
   "author": { "name": "StockSharp", "url": "https://stocksharp.com" },

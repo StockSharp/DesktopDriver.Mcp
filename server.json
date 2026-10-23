@@ -7,12 +7,12 @@
     "url": "https://github.com/StockSharp/DesktopDriver.Mcp",
     "source": "github"
   },
-  "version": "1.0.1",
+  "version": "2.0.0",
   "packages": [
     {
       "registryType": "nuget",
       "identifier": "StockSharp.DesktopDriver.Mcp",
-      "version": "1.0.1",
+      "version": "2.0.0",
       "runtimeHint": "dnx",
       "transport": { "type": "stdio" },
       "environmentVariables": [
