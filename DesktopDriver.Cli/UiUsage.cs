@@ -57,7 +57,7 @@ internal static class UiUsage
 		  --part gridCell --row <key> --column <id>; --part gridCellControl --row <key> --column <id>
 		  --control <name>; --part propertyValue --path <property>; --part propertyValueControl --path <property> --control <name>; --part listItem --index <n>;
 		  --part treeItem --item <key>;
-		  --part treeItemControl --item <key> --control <name>; --part dockTab|dockClose --panel <id>;
+		  --part treeItemControl --item <key> --control <name>; --part dockTab|dockClose|dockPin --panel <id>;
 		  --part ribbonItem --item <name>; --part chartAnnotation --annotation <id>;
 		  --part chartPrice --area <id> --price <price, with a point>; --part chartOrder|chartOrderCancel --order <id>;
 		  --part chartAreaClose --area <id>, the cross on the header of a pane under the chart.

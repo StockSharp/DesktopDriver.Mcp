@@ -77,7 +77,8 @@ the input backend, the capabilities and the default read budget.
 The capabilities name the input the backend sends (`input.click`, `input.text`, `input.key`, `input.scroll`,
 `input.drag`, `input.hover`, `input.leave`) and what its pictures can do beyond leaving a control out:
 `image.highlight` frames what a picture points at, `image.mask.text` finds every place a control's text is drawn,
-and `image.mask.paths` finds the local paths - a drive, a share, a home folder - drawn inside a node. A picture
+`image.mask.paths` finds the local paths - a drive, a share, a home folder - drawn inside a node, and
+`image.mask.pattern` finds what the mask's regular expression matches in the lines drawn inside a node. A picture
 is a read, so a run whose input is refused still lists what its pictures can do.
 
 Things that stand together - the tabs of a strip, the commands of a toolbar - are framed as one: their frames would cut

@@ -447,6 +447,31 @@ public class DockTests : BaseTestClass
 
 	[TestMethod]
 	[Timeout(60000)]
+	public Task APanelShownAloneIsTuckedAwayByThePinOnItsCaption() => RunAsync(() =>
+	{
+		// A panel that cannot be closed - the log of a program - can still be tucked away to the edge, and a picture of
+		// what is beside it is taken so: the pin is on the caption over it.
+		var workspace = NewWorkspace();
+		using var harness = new ControlHarness(workspace);
+
+		IsTrue(((IUiInputTargetAdapter)harness.Adapter).SupportsTargetPart(harness.Subject, new UiDockPinPart("Explorer")), "A workspace has no pin to press.");
+
+		var target = ((IUiInputTargetAdapter)harness.Adapter).ResolveInputTarget(
+			harness.Subject, new UiDockPinPart("Explorer"), new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None), harness.Context);
+
+		var pin = workspace.GetVisualDescendants()
+			.OfType<ToolChromeControl>()
+			.Single()
+			.GetVisualDescendants()
+			.OfType<Button>()
+			.Single(button => button.Name == "PART_PinButton");
+		var bounds = new Rect(pin.TranslatePoint(default, harness.Window) ?? throw new InvalidOperationException("The button is not laid out."), pin.Bounds.Size);
+
+		IsTrue(bounds.Contains(new Point(target.PointInSurfaceDip.X, target.PointInSurfaceDip.Y)), "The panel is not tucked away by the pin on its caption.");
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
 	public Task APanelShownAloneIsClosedByTheButtonOnItsCaption() => RunAsync(() =>
 	{
 		// A tool alone in its group shows no tab: the button a person closes it with is on the caption over it.

@@ -83,6 +83,31 @@ internal static class DockParts
 		=> button.Name == "PART_CloseButton" && button.IsEffectivelyVisible;
 
 	/// <summary>
+	/// The pin on the caption over a panel, which tucks the panel away to the edge of the workspace.
+	/// </summary>
+	/// <param name="host">The control the layout is drawn in.</param>
+	/// <param name="layout">The layout.</param>
+	/// <param name="panelId">The panel.</param>
+	/// <returns>The button.</returns>
+	public static Control Pin(Visual host, IDock layout, string panelId)
+	{
+		var dockable = Dockable(layout, panelId);
+
+		// The caption pins whichever panel of its group is in front, so it is this panel's only while this one is.
+		var pin = dockable.Owner is IDock { ActiveDockable: var active } group && ReferenceEquals(active, dockable)
+			? host.GetVisualDescendants()
+				.OfType<ToolChromeControl>()
+				.Where(chrome => ReferenceEquals(chrome.DataContext, group))
+				.SelectMany(chrome => chrome.GetVisualDescendants().OfType<Button>())
+				.FirstOrDefault(button => button.Name == "PART_PinButton" && button.IsEffectivelyVisible)
+			: null;
+
+		return pin ?? throw UiErrors.Fail(
+			UiErrorCodes.NotInteractable,
+			$"'{panelId}' shows no pin: it is not the panel in front of its group, or it cannot be tucked away.");
+	}
+
+	/// <summary>
 	/// Brings a panel's tab into the strip's visible part.
 	/// </summary>
 	/// <param name="host">The control the layout is drawn in.</param>

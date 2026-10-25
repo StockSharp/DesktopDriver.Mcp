@@ -34,7 +34,7 @@ public static class InputTools
 		UiGridHeaderPart.KindName + ", " + UiGridCellPart.KindName + ", " + UiGridCellControlPart.KindName + ", " +
 		UiPropertyValuePart.KindName + ", " + UiPropertyValueControlPart.KindName + ", " + UiListItemPart.KindName + ", " +
 		UiTreeItemPart.KindName + ", " + UiTreeItemControlPart.KindName + ", " + UiDockTabPart.KindName + ", " +
-		UiDockClosePart.KindName + ", " + UiChartAnnotationPart.KindName + ", " + UiChartPricePart.KindName + ", " +
+		UiDockClosePart.KindName + ", " + UiDockPinPart.KindName + ", " + UiChartAnnotationPart.KindName + ", " + UiChartPricePart.KindName + ", " +
 		UiChartOrderPart.KindName + ", " + UiChartOrderCancelPart.KindName + " or " + UiChartAreaClosePart.KindName;
 
 	[McpServerTool(Name = "ui_click", Title = "Click something")]
@@ -57,7 +57,7 @@ public static class InputTools
 		[Description("The property's path on the object the editor shows, for propertyValue and propertyValueControl.")] string propertyPath = null,
 		[Description("The item's path through the tree, for treeItem and treeItemControl.")] string itemKey = null,
 		[Description("The item's position in the list, from 0, for listItem.")] long? itemIndex = null,
-		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
+		[Description("Which panel, for dockTab, dockClose and dockPin.")] string panelId = null,
 		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
 		[Description("Which area of the chart, as its state names it, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
@@ -89,7 +89,7 @@ public static class InputTools
 		[Description("The property's path on the object the editor shows.")] string propertyPath = null,
 		[Description("The item's path through the tree.")] string itemKey = null,
 		[Description("The item's position in the list, from 0.")] long? itemIndex = null,
-		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
+		[Description("Which panel, for dockTab, dockClose and dockPin.")] string panelId = null,
 		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
 		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
@@ -200,7 +200,7 @@ public static class InputTools
 		[Description("The property's path on the object the editor shows, for propertyValue and propertyValueControl.")] string propertyPath = null,
 		[Description("The item's path through the tree, for treeItem and treeItemControl.")] string itemKey = null,
 		[Description("The item's position in the list, from 0, for listItem.")] long? itemIndex = null,
-		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
+		[Description("Which panel, for dockTab, dockClose and dockPin.")] string panelId = null,
 		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
 		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
@@ -250,7 +250,7 @@ public static class InputTools
 		[Description("The property's path on the object the editor shows, for propertyValue and propertyValueControl.")] string propertyPath = null,
 		[Description("The item's path through the tree, for treeItem and treeItemControl.")] string itemKey = null,
 		[Description("The item's position in the list, from 0, for listItem.")] long? itemIndex = null,
-		[Description("Which panel, for dockTab and dockClose.")] string panelId = null,
+		[Description("Which panel, for dockTab, dockClose and dockPin.")] string panelId = null,
 		[Description("Which annotation, for chartAnnotation.")] string annotationId = null,
 		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
@@ -366,6 +366,7 @@ public static class InputTools
 			UiTreeItemControlPart.KindName => new UiTreeItemControlPart(Needed(itemKey, "itemKey", part), Needed(controlName, "controlName", part)),
 			UiDockTabPart.KindName => new UiDockTabPart(Needed(panelId, "panelId", part)),
 			UiDockClosePart.KindName => new UiDockClosePart(Needed(panelId, "panelId", part)),
+			UiDockPinPart.KindName => new UiDockPinPart(Needed(panelId, "panelId", part)),
 			UiChartAnnotationPart.KindName => new UiChartAnnotationPart(
 				Needed(annotationId, "annotationId", part)),
 			UiChartPricePart.KindName => new UiChartPricePart(

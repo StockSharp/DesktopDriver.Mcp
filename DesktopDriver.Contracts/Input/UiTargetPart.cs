@@ -21,6 +21,7 @@ using System.Text.Json.Serialization;
 [JsonDerivedType(typeof(UiTreeItemControlPart), UiTreeItemControlPart.KindName)]
 [JsonDerivedType(typeof(UiDockTabPart), UiDockTabPart.KindName)]
 [JsonDerivedType(typeof(UiDockClosePart), UiDockClosePart.KindName)]
+[JsonDerivedType(typeof(UiDockPinPart), UiDockPinPart.KindName)]
 [JsonDerivedType(typeof(UiChartAnnotationPart), UiChartAnnotationPart.KindName)]
 [JsonDerivedType(typeof(UiChartPricePart), UiChartPricePart.KindName)]
 [JsonDerivedType(typeof(UiChartOrderPart), UiChartOrderPart.KindName)]
@@ -203,6 +204,17 @@ public sealed record UiDockClosePart(string PanelId) : UiTargetPart
 {
 	/// <summary>The wire name.</summary>
 	public const string KindName = "dockClose";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>The pin of a dock panel, which tucks it away to the edge of its workspace and brings it back.</summary>
+/// <param name="PanelId">The panel.</param>
+public sealed record UiDockPinPart(string PanelId) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "dockPin";
 
 	/// <inheritdoc />
 	public override string Kind => KindName;

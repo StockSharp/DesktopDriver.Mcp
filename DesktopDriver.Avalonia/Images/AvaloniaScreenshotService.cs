@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -78,6 +79,17 @@ public sealed class AvaloniaScreenshotService(
 				continue;
 			}
 
+			if (entry.Scope == UiMaskScopes.Pattern)
+			{
+				if (entry.Part is not null)
+					throw UiErrors.Invalid($"What the pattern matches is left out wherever it is drawn inside {entry.Node}, so a part of it means nothing.");
+
+				foreach (var rectangle in PrivateText.Matches(root, control, PatternOf(entry)))
+					yield return rectangle;
+
+				continue;
+			}
+
 			var size = control.Bounds.Size;
 
 			if (size.Width <= 0 || size.Height <= 0 || control.TranslatePoint(default, root) is not Point at)
@@ -99,6 +111,23 @@ public sealed class AvaloniaScreenshotService(
 			var below = part.Y + part.Height;
 
 			yield return new(new Point(part.X, below), new Size(part.Width, Math.Max(0, whole.Y + whole.Height - below)));
+		}
+	}
+
+	// A mask that cannot say what it covers would cover nothing, and the picture would publish what it was asked to keep
+	// out. A pattern is given a second per line, because the caller writes it and the window waits while it runs.
+	private static Regex PatternOf(UiMask entry)
+	{
+		if (string.IsNullOrEmpty(entry.Pattern))
+			throw UiErrors.Invalid($"The mask of a pattern inside {entry.Node} gives no pattern.");
+
+		try
+		{
+			return new(entry.Pattern, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+		}
+		catch (ArgumentException error)
+		{
+			throw UiErrors.Invalid($"'{entry.Pattern}' is not a pattern: {error.Message}");
 		}
 	}
 
@@ -243,7 +272,7 @@ public sealed class AvaloniaScreenshotService(
 	/// What these pictures can do beyond leaving a control out: frame what they point at, and find where a text or a
 	/// local path is drawn.
 	/// </summary>
-	public static ImmutableArray<string> Capabilities { get; } = ["image.highlight", "image.mask.text", "image.mask.paths"];
+	public static ImmutableArray<string> Capabilities { get; } = ["image.highlight", "image.mask.text", "image.mask.paths", "image.mask.pattern"];
 
 	/// <summary>
 	/// Takes a picture.
@@ -265,6 +294,32 @@ public sealed class AvaloniaScreenshotService(
 			? _executor.InvokeAsync(() => CaptureWindow(request), cancellationToken)
 			: _executor.InvokeAsync(() => Capture(request), cancellationToken);
 	}
+
+	// The popups open over a window, each with the rectangle it takes in the window's own units.
+	private static (TopLevel Root, Rect Place)[] PopupsOver(TopLevel window)
+	{
+		var origin = window.PointToScreen(default);
+		var scaling = window.RenderScaling;
+
+		return [.. AvaloniaRootTracker.PopupsOf(window)
+			.Select(popup => popup.Popup)
+			.Distinct()
+			.Select(popup =>
+			{
+				var at = popup.PointToScreen(default);
+
+				return (popup, new Rect(new Point((at.X - origin.X) / scaling, (at.Y - origin.Y) / scaling), popup.ClientSize));
+			})];
+	}
+
+	// The popups a window draws in its own overlay rather than in windows of their own: they are in the window's
+	// picture already and only need room in it.
+	private static Rect[] OverlaidOver(TopLevel window)
+		=> [.. AvaloniaTopLevels.VisualsOf(window)
+			.OfType<global::Avalonia.Controls.Primitives.Popup>()
+			.Where(popup => popup.IsOpen && popup.Child is { } child && ReferenceEquals(TopLevel.GetTopLevel(child), window))
+			.Select(popup => popup.Child.TranslatePoint(default, window) is Point at ? new Rect(at, popup.Child.Bounds.Size) : default)
+			.Where(place => place.Width > 0 && place.Height > 0)];
 
 	// The window as the desktop has it, which is the only way its title bar is in the picture: the bar is
 	// drawn around the window's contents rather than by them, so a redraw of the contents leaves a strip
@@ -373,12 +428,26 @@ public sealed class AvaloniaScreenshotService(
 
 		var dpi = new Vector(96 * scaling, 96 * scaling);
 
+		// A list, a menu or a flyout open over the control is a window of its own and hangs where it likes - a list
+		// below its box, past the edge of the panel the box is in. Asked for, each is drawn where it stands and the
+		// picture grows to take it in.
+		(TopLevel Root, Rect Place)[] popups = request.IncludePopups ? PopupsOver(root) : [];
+		Rect[] overlaid = request.IncludePopups ? OverlaidOver(root) : [];
+
+		var pictured = popups
+			.Select(popup => popup.Place)
+			.Concat(overlaid)
+			.Aggregate(new Rect(origin, size), (whole, place) => whole.Union(place));
+
+		width = (int)Math.Ceiling(pictured.Width * scaling);
+		height = (int)Math.Ceiling(pictured.Height * scaling);
+
 		// A control paints only what it owns. One that takes its ground from the window - a workspace, a
 		// page, most panels - drawn on its own comes back as text on transparency. The window is drawn
 		// instead and the control's rectangle cut out of it, which is what is behind the control as well
 		// as what is in it.
 		var frame = root.Bounds.Size;
-		var framed = Highlighted(root, request.Highlight, new Rect(origin, size));
+		var framed = Highlighted(root, request.Highlight, pictured);
 
 		using var window = new RenderTargetBitmap(
 			new PixelSize((int)Math.Ceiling(frame.Width * scaling), (int)Math.Ceiling(frame.Height * scaling)),
@@ -389,14 +458,31 @@ public sealed class AvaloniaScreenshotService(
 		using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), dpi);
 
 		using (var context = bitmap.CreateDrawingContext())
-		using (context.PushClip(new Rect(0, 0, size.Width, size.Height)))
-		using (context.PushTransform(Matrix.CreateTranslation(-origin.X, -origin.Y)))
+		using (context.PushClip(new Rect(0, 0, pictured.Width, pictured.Height)))
+		using (context.PushTransform(Matrix.CreateTranslation(-pictured.X, -pictured.Y)))
 		{
-			context.DrawImage(window, new Rect(default, frame));
+			// Of the window only the control is taken, and the popups it draws in its own overlay: beside a list that
+			// hangs past the control the rest of the window is not what the picture is about, and is left out.
+			foreach (var place in overlaid.Prepend(new Rect(origin, size)))
+			{
+				using (context.PushClip(place))
+					context.DrawImage(window, new Rect(default, frame));
+			}
+
+			foreach (var popup in popups)
+			{
+				using var drawn = new RenderTargetBitmap(
+					new PixelSize((int)Math.Ceiling(popup.Place.Width * scaling), (int)Math.Ceiling(popup.Place.Height * scaling)),
+					dpi);
+
+				drawn.Render(popup.Root);
+				context.DrawImage(drawn, popup.Place);
+			}
+
 			Frame(context, framed);
 		}
 
-		var data = Encode(bitmap, Masked(root, request.Mask), new(-origin.X, -origin.Y), scaling);
+		var data = Encode(bitmap, Masked(root, request.Mask), new(-pictured.X, -pictured.Y), scaling);
 		var id = _artifacts.Add(data, "image/png");
 
 		return new UiScreenshotInfo(

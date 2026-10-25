@@ -397,6 +397,7 @@ internal static class UiCommands
 			UiTreeItemControlPart.KindName => new UiTreeItemControlPart(Required("item"), Required("control")),
 			UiDockTabPart.KindName => new UiDockTabPart(Required("panel")),
 			UiDockClosePart.KindName => new UiDockClosePart(Required("panel")),
+			UiDockPinPart.KindName => new UiDockPinPart(Required("panel")),
 			UiRibbonItemPart.KindName => new UiRibbonItemPart(Required("item")),
 			UiChartAnnotationPart.KindName => new UiChartAnnotationPart(Required("annotation")),
 			UiChartPricePart.KindName => new UiChartPricePart(Required("area"), Price(Required("price"))),
@@ -405,7 +406,7 @@ internal static class UiCommands
 			UiChartAreaClosePart.KindName => new UiChartAreaClosePart(Required("area")),
 			_ => throw new UiUsageException(
 				$"--{prefix}part takes one of {UiControlPart.KindName}, {UiGridHeaderPart.KindName}, " +
-				$"{UiGridCellPart.KindName}, {UiGridCellControlPart.KindName}, {UiPropertyValuePart.KindName}, {UiPropertyValueControlPart.KindName}, {UiListItemPart.KindName}, {UiTreeItemPart.KindName}, {UiTreeItemControlPart.KindName}, {UiDockTabPart.KindName}, {UiDockClosePart.KindName}, {UiRibbonItemPart.KindName}, " +
+				$"{UiGridCellPart.KindName}, {UiGridCellControlPart.KindName}, {UiPropertyValuePart.KindName}, {UiPropertyValueControlPart.KindName}, {UiListItemPart.KindName}, {UiTreeItemPart.KindName}, {UiTreeItemControlPart.KindName}, {UiDockTabPart.KindName}, {UiDockClosePart.KindName}, {UiDockPinPart.KindName}, {UiRibbonItemPart.KindName}, " +
 				$"{UiChartAnnotationPart.KindName}, {UiChartPricePart.KindName}, {UiChartOrderPart.KindName}, {UiChartOrderCancelPart.KindName} or {UiChartAreaClosePart.KindName}, not '{kind}'."),
 		};
 	}
@@ -540,7 +541,7 @@ internal static class UiCommands
 	{
 		var (node, part) = Pointed("mask", text);
 
-		return new(node, part, UiMaskScopes.Node);
+		return new(node, part, UiMaskScopes.Node, null);
 	}
 
 	// The same spelling, for the things a picture frames: "scope/identifier" frames a control,

@@ -2,6 +2,7 @@ namespace StockSharp.DesktopDriver.Avalonia;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 using global::Avalonia;
@@ -15,7 +16,8 @@ using StockSharp.DesktopDriver.Diagnostics;
 using StockSharp.DesktopDriver.Runtime;
 
 /// <summary>
-/// Where the text one control shows is drawn anywhere in its window, and where a path of the machine is.
+/// Where the text one control shows is drawn anywhere in its window, where a path of the machine is, and where a
+/// pattern matches.
 /// </summary>
 /// <remarks>
 /// The name of whoever is signed in is shown by one control and quoted by others - a line of the log reads
@@ -52,6 +54,7 @@ internal static class PrivateText
 			TextBlock block => Shown(block),
 			TextBox box => box.Text,
 			ContentControl { Content: string content } => content,
+			ComboBox box => Chosen(box),
 			_ => throw UiErrors.Unsupported($"A {source.GetType().Name} shows no text of its own to keep out of a picture."),
 		};
 
@@ -105,8 +108,46 @@ internal static class PrivateText
 		}
 	}
 
+	/// <summary>
+	/// Every place inside a control where a pattern matches what a line of text draws, in its window's units.
+	/// </summary>
+	/// <param name="root">The window.</param>
+	/// <param name="within">The control whose lines are searched.</param>
+	/// <param name="pattern">What is kept out.</param>
+	/// <returns>Where each match is drawn.</returns>
+	public static IEnumerable<Rect> Matches(TopLevel root, Control within, Regex pattern)
+	{
+		ArgumentNullException.ThrowIfNull(root);
+		ArgumentNullException.ThrowIfNull(within);
+		ArgumentNullException.ThrowIfNull(pattern);
+
+		foreach (var visual in within.GetSelfAndVisualDescendants())
+		{
+			if (!visual.IsEffectivelyVisible)
+				continue;
+
+			var found = visual switch
+			{
+				TextBlock block => FindMatches(root, block, Shown(block), pattern, block.TextLayout, block.Padding),
+				TextPresenter presenter => FindMatches(root, presenter, presenter.Text, pattern, presenter.TextLayout, default),
+				_ => [],
+			};
+
+			foreach (var rectangle in found)
+				yield return rectangle;
+		}
+	}
+
 	private static string Shown(TextBlock block)
 		=> block.Inlines is { Count: > 0 } inlines ? inlines.Text : block.Text;
+
+	// What a box shows of its choice is drawn by a template rather than held by the box: the text of its closed face.
+	private static string Chosen(ComboBox box)
+		=> box.GetVisualDescendants()
+			.OfType<TextBlock>()
+			.Where(block => block.IsEffectivelyVisible)
+			.Select(Shown)
+			.FirstOrDefault(text => !string.IsNullOrWhiteSpace(text));
 
 	private static IEnumerable<Rect> Find(TopLevel root, Layoutable owner, string shown, string text, TextLayout layout, Thickness padding)
 	{
@@ -141,6 +182,24 @@ internal static class PrivateText
 				end = shown.Length;
 
 			foreach (var drawn in layout.HitTestTextRange(path.Index, end - path.Index))
+				yield return drawn.Translate(origin);
+		}
+	}
+
+	private static IEnumerable<Rect> FindMatches(TopLevel root, Layoutable owner, string shown, Regex pattern, TextLayout layout, Thickness padding)
+	{
+		if (string.IsNullOrEmpty(shown) || layout is null)
+			yield break;
+
+		if (owner.TranslatePoint(new(padding.Left, padding.Top + Overflow(owner, layout, padding)), root) is not Point origin)
+			yield break;
+
+		foreach (Match match in pattern.Matches(shown))
+		{
+			if (match.Length == 0)
+				continue;
+
+			foreach (var drawn in layout.HitTestTextRange(match.Index, match.Length))
 				yield return drawn.Translate(origin);
 		}
 	}

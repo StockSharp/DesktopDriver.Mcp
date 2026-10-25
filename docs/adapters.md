@@ -92,7 +92,7 @@ unrelated.
 | `gridCell` | `DataGridAdapter` | a record's cell in a column |
 | `gridCellControl` | `DataGridAdapter` | a named control inside a record's cell |
 | `treeItem` / `treeItemControl` | `AvaloniaTreeAdapter` | an item of a tree, and a named control inside it |
-| `dockTab` / `dockClose` | `DockAdapter` | a panel's tab, and the close button on it |
+| `dockTab` / `dockClose` / `dockPin` | `DockAdapter` | a panel's tab, the close button on it, and the pin on its caption that tucks it away to the edge |
 | `ribbonItem` | the product's adapter for its bars | an entry of a ribbon, a menu or a tool bar, by the name its markup gave it |
 | `chartPrice` | the product's chart adapter | the place in an area of a chart where a price is drawn |
 | `chartOrder` / `chartOrderCancel` | the product's chart adapter | the line of an order a chart shows, and the mark that cancels it |

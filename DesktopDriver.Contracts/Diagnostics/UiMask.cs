@@ -8,7 +8,8 @@ using StockSharp.DesktopDriver.Input;
 /// </summary>
 /// <param name="Node">What it belongs to.</param>
 /// <param name="Part">Which part of it, or <see langword="null"/> for the whole of it.</param>
-/// <param name="Scope">What is covered: the node itself, its text wherever that text is drawn, or the paths drawn inside it.</param>
+/// <param name="Scope">What is covered: the node itself, its text wherever that text is drawn, the paths drawn inside it, or what a pattern matches inside it.</param>
+/// <param name="Pattern">The regular expression <see cref="UiMaskScopes.Pattern"/> covers the matches of; <see langword="null"/> for every other scope.</param>
 /// <remarks>
 /// A part is named the same way an action names one, and answered by the same adapter - so "the account
 /// column of that table" means here exactly what it means when something is clicked. A column is covered
@@ -23,5 +24,9 @@ using StockSharp.DesktopDriver.Input;
 /// <see cref="UiMaskScopes.Paths"/> is for where a product keeps its files: the folder is the machine's, not the
 /// product's, and turns up in boxes, lists and lines of the log alike. It names no part either.
 /// </para>
+/// <para>
+/// <see cref="UiMaskScopes.Pattern"/> is for a value known by its shape that a product writes into its own lines where
+/// no control on the page holds it: the number of a licence in a line of the log. It names no part.
+/// </para>
 /// </remarks>
-public sealed record UiMask(UiNodeId Node, UiTargetPart Part, UiMaskScopes Scope);
+public sealed record UiMask(UiNodeId Node, UiTargetPart Part, UiMaskScopes Scope, string Pattern);

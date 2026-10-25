@@ -49,7 +49,7 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 
 	/// <inheritdoc />
 	public bool SupportsTargetPart(UiSubject subject, UiTargetPart part)
-		=> subject?.Instance is DockControl && part is UiDockTabPart or UiDockClosePart;
+		=> subject?.Instance is DockControl && part is UiDockTabPart or UiDockClosePart or UiDockPinPart;
 
 	/// <inheritdoc />
 	public UiResolvedInputTarget ResolveInputTarget(
@@ -66,6 +66,7 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 		{
 			UiDockTabPart tab => tab.PanelId,
 			UiDockClosePart close => close.PanelId,
+			UiDockPinPart pin => pin.PanelId,
 			_ => throw UiErrors.Unsupported($"A workspace has no part called {part?.Kind}."),
 		};
 
@@ -73,13 +74,19 @@ public sealed class DockAdapter(AvaloniaNodeBinder binder)
 		{
 			DockParts.Show(host, layout, panelId);
 
-			return part is UiDockClosePart
-				? AvaloniaInputTargetResolver.Placed(DockParts.Close(host, layout, panelId), context?.Node, context?.Revisions, $"close button of '{panelId}'")
-				: AvaloniaInputTargetResolver.Placed(DockParts.Tab(host, layout, panelId), context?.Node, context?.Revisions, $"tab of '{panelId}'");
+			return part switch
+			{
+				UiDockClosePart => AvaloniaInputTargetResolver.Placed(DockParts.Close(host, layout, panelId), context?.Node, context?.Revisions, $"close button of '{panelId}'"),
+				UiDockPinPart => AvaloniaInputTargetResolver.Placed(DockParts.Pin(host, layout, panelId), context?.Node, context?.Revisions, $"pin of '{panelId}'"),
+				_ => AvaloniaInputTargetResolver.Placed(DockParts.Tab(host, layout, panelId), context?.Node, context?.Revisions, $"tab of '{panelId}'"),
+			};
 		}
 
 		if (part is UiDockClosePart)
 			return AvaloniaInputTargetResolver.Locate(DockParts.Close(host, layout, panelId), context?.Node, context?.Revisions, $"close button of '{panelId}'");
+
+		if (part is UiDockPinPart)
+			return AvaloniaInputTargetResolver.Locate(DockParts.Pin(host, layout, panelId), context?.Node, context?.Revisions, $"pin of '{panelId}'");
 
 		// A tab carries buttons of its own - help, close - and a short one has one of them at its middle: the tab is pressed
 		// where none of them is. A button that shows the panel's title is the tab itself, as at the edge of a workspace.

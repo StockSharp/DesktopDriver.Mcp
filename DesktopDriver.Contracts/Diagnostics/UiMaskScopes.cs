@@ -23,4 +23,13 @@ public enum UiMaskScopes
 	/// because a path may hold spaces and where it ends cannot be told from the text.
 	/// </remarks>
 	Paths,
+
+	/// <summary>
+	/// Every run of text drawn inside the node that the mask's pattern matches.
+	/// </summary>
+	/// <remarks>
+	/// A value a product writes into its own lines where no control on the page holds it, such as the number of a
+	/// licence in a line of the log. Only the characters the pattern matches are covered.
+	/// </remarks>
+	Pattern,
 }

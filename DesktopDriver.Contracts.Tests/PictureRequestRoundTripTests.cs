@@ -27,7 +27,7 @@ public class PictureRequestRoundTripTests : BaseTestClass
 			0,
 			0,
 			null,
-			[new UiMask(new UiNodeId("window:MainWindow", "UserName"), null, UiMaskScopes.Text)],
+			[new UiMask(new UiNodeId("window:MainWindow", "UserName"), null, UiMaskScopes.Text, null)],
 			[
 				new UiHighlight(new UiNodeId("window:MainWindow", "MarketDataButton"), null),
 				new UiHighlight(new UiNodeId("panel:Orders", "OrderGrid"), new UiGridHeaderPart("Price")),
@@ -54,7 +54,7 @@ public class PictureRequestRoundTripTests : BaseTestClass
 			0,
 			0,
 			null,
-			[new UiMask(new UiNodeId("window:MainWindow", "~root"), null, UiMaskScopes.Paths)],
+			[new UiMask(new UiNodeId("window:MainWindow", "~root"), null, UiMaskScopes.Paths, null)],
 			[]);
 
 		var json = UiJson.Write(request);
@@ -63,6 +63,27 @@ public class PictureRequestRoundTripTests : BaseTestClass
 		AreEqual(json, UiJson.Write(restored));
 		AreEqual(UiMaskScopes.Paths, restored.Mask.Single().Scope);
 		IsNull(restored.Mask.Single().Part);
+	}
+
+	[TestMethod]
+	public void APictureArrivesKeepingWhatAPatternMatchesOutOfIt()
+	{
+		var request = new UiScreenshotRequest(
+			UiTarget.FromId(new UiNodeId("window:MainWindow", "LogsPage")),
+			UiCaptureKinds.ControlRender,
+			false,
+			0,
+			0,
+			null,
+			[new UiMask(new UiNodeId("window:MainWindow", "LogsPage"), null, UiMaskScopes.Pattern, @"(?<=\(id=)\d+")],
+			[]);
+
+		var json = UiJson.Write(request);
+		var restored = UiJson.Read<UiScreenshotRequest>(json);
+
+		AreEqual(json, UiJson.Write(restored));
+		AreEqual(UiMaskScopes.Pattern, restored.Mask.Single().Scope);
+		AreEqual(@"(?<=\(id=)\d+", restored.Mask.Single().Pattern);
 	}
 
 	[TestMethod]

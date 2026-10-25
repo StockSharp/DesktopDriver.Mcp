@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using global::Avalonia;
 using global::Avalonia.Controls;
 using global::Avalonia.Controls.Presenters;
+using global::Avalonia.Layout;
 using global::Avalonia.Media;
 using global::Avalonia.Media.Imaging;
 using global::Avalonia.Media.TextFormatting;
@@ -77,7 +78,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var plain = await Pixels(service, artifacts, pageId, [], []);
-		var masked = await Pixels(service, artifacts, pageId, [new UiMask(secretId, null, UiMaskScopes.Node)], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(secretId, null, UiMaskScopes.Node, null)], []);
 
 		var covered = new PixelRect(0, 0, 200, 40);
 
@@ -125,7 +126,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var plain = await Pixels(service, artifacts, pageId, [], []);
-		var masked = await Pixels(service, artifacts, pageId, [new UiMask(userId, null, UiMaskScopes.Text)], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(userId, null, UiMaskScopes.Text, null)], []);
 
 		var shown = Drawn.Where(user, page, "Gooner");
 		var quoted = Drawn.Where(log, page, "Gooner");
@@ -177,7 +178,7 @@ public class ScreenshotTests : BaseTestClass
 				0,
 				0,
 				null,
-				[new UiMask(userId, null, UiMaskScopes.Text)],
+				[new UiMask(userId, null, UiMaskScopes.Text, null)],
 				[]),
 			CancellationToken.None));
 
@@ -220,7 +221,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var plain = await Pixels(service, artifacts, pageId, [], []);
-		var masked = await Pixels(service, artifacts, pageId, [new UiMask(pageId, null, UiMaskScopes.Paths)], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(pageId, null, UiMaskScopes.Paths, null)], []);
 
 		var quoted = Drawn.Where(log, page, @"D:\my work\Storage 5 files");
 		var typed = Drawn.Where(box.GetVisualDescendants().OfType<TextPresenter>().Single(), page, box.Text);
@@ -277,7 +278,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var plain = await Pixels(service, artifacts, pageId, [], []);
-		var masked = await Pixels(service, artifacts, pageId, [new UiMask(pageId, null, UiMaskScopes.Paths)], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(pageId, null, UiMaskScopes.Paths, null)], []);
 
 		var drawn = Drawn.Bounds(cut, page);
 
@@ -317,7 +318,7 @@ public class ScreenshotTests : BaseTestClass
 			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
 
 		var plain = await Pixels(service, artifacts, pageId, [], []);
-		var masked = await Pixels(service, artifacts, pageId, [new UiMask(panelId, null, UiMaskScopes.Paths)], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(panelId, null, UiMaskScopes.Paths, null)], []);
 
 		IsTrue(masked.Steepest(Drawn.Where(inside, page, inside.Text)) < 24, "The path inside the node can still be read.");
 		IsTrue(plain.Same(masked, Drawn.Where(outside, page, outside.Text)), "A path outside the node was touched.");
@@ -349,9 +350,81 @@ public class ScreenshotTests : BaseTestClass
 				0,
 				0,
 				null,
-				[new UiMask(id, new UiGridHeaderPart("Path"), UiMaskScopes.Paths)],
+				[new UiMask(id, new UiGridHeaderPart("Path"), UiMaskScopes.Paths, null)],
 				[]),
 			CancellationToken.None));
+
+		AreEqual(UiErrorCodes.InvalidRequest, error.Error.Code);
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task WhatAPatternMatchesIsKeptOutAndNothingElse() => RunAsync(async () =>
+	{
+		// A product writes the number of a licence into a line of its log on a page where no control of its own holds
+		// that number, so its shape is all there is to find it by; the rest of the line is what the picture is for.
+		var saved = Line("SavedLine", "saving license (id=108839)...");
+		var other = Line("OtherLine", "license request complete");
+		var outside = Line("OutsideLine", "saving license (id=108840)...");
+		var log = new StackPanel { Name = "LogPanel", Spacing = 12 };
+
+		log.Children.Add(saved);
+		log.Children.Add(other);
+
+		var page = new StackPanel { Name = "PatternPage", Width = 380, Spacing = 12, Background = Brushes.White };
+
+		page.Children.Add(log);
+		page.Children.Add(outside);
+
+		var window = new Window { Name = "PatternWindow", Width = 400, Height = 300, Content = page };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var pageId = fixture.Bind(page);
+		var logId = fixture.Bind(log);
+		var artifacts = new UiArtifactStore();
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
+
+		var plain = await Pixels(service, artifacts, pageId, [], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(logId, null, UiMaskScopes.Pattern, @"(?<=\(id=)\d+")], []);
+
+		var number = Drawn.Where(saved, page, "108839");
+
+		IsTrue(plain.Steepest(number) > 128, "The number was not drawn, so this proves nothing.");
+		IsTrue(masked.Steepest(number) < 24, "The number can still be read.");
+
+		IsTrue(plain.Same(masked, Drawn.Where(saved, page, "saving license")), "The words before the number were touched.");
+		IsTrue(plain.Same(masked, Drawn.Where(other, page, other.Text)), "A line the pattern does not match was touched.");
+		IsTrue(plain.Same(masked, Drawn.Where(outside, page, outside.Text)), "A match outside the node was touched.");
+
+		static TextBlock Line(string name, string text)
+			=> new() { Name = name, Text = text, FontSize = 20, Foreground = Brushes.Black };
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task APartOfWhatAPatternMatchesIsRefused() => RunAsync(async () =>
+	{
+		var error = await PatternRefusalAsync("PatternPartWindow", new UiGridHeaderPart("Message"), @"\d+");
+
+		// The matches are found wherever they are drawn inside the node, so a column of it narrows nothing.
+		AreEqual(UiErrorCodes.InvalidRequest, error.Error.Code);
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	[DataRow("PatternMissingWindow", null)]
+	[DataRow("PatternEmptyWindow", "")]
+	[DataRow("PatternBrokenWindow", "(id=")]
+	public Task APatternThatCannotBeReadIsRefused(string windowName, string pattern) => RunAsync(async () =>
+	{
+		// Taking the picture without the mask would publish what the mask was asked to keep out.
+		var error = await PatternRefusalAsync(windowName, null, pattern);
 
 		AreEqual(UiErrorCodes.InvalidRequest, error.Error.Code);
 	});
@@ -383,7 +456,7 @@ public class ScreenshotTests : BaseTestClass
 				0,
 				0,
 				null,
-				[new UiMask(new UiNodeId("window:MissingMaskWindow", "NoSuchThing"), null, UiMaskScopes.Node)],
+				[new UiMask(new UiNodeId("window:MissingMaskWindow", "NoSuchThing"), null, UiMaskScopes.Node, null)],
 				[]),
 			CancellationToken.None));
 	});
@@ -484,6 +557,35 @@ public class ScreenshotTests : BaseTestClass
 	});
 
 	// A white ribbon with one grey command on it, 80 by 40 at 110, 40.
+	// A line with a licence number in it, pictured with the one mask of a pattern the caller gives.
+	private async Task<UiAutomationException> PatternRefusalAsync(string windowName, UiTargetPart part, string pattern)
+	{
+		var line = new TextBlock { Name = "PatternLine", Text = "saving license (id=108839)..." };
+		var window = new Window { Name = windowName, Width = 400, Height = 300, Content = line };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var id = fixture.Bind(line);
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, new UiArtifactStore(), fixture.InstanceId);
+
+		return await ThrowsAsync<UiAutomationException>(() => service.CaptureAsync(
+			new UiScreenshotRequest(
+				UiTarget.FromId(id),
+				UiCaptureKinds.ControlRender,
+				false,
+				0,
+				0,
+				null,
+				[new UiMask(id, part, UiMaskScopes.Pattern, pattern)],
+				[]),
+			CancellationToken.None));
+	}
+
 	private static (Window Window, Canvas Ribbon, Border Command) Ribbon(string name)
 	{
 		var command = new Border { Name = "TheCommand", Width = 80, Height = 40, Background = Brushes.LightGray };
@@ -825,6 +927,106 @@ public class ScreenshotTests : BaseTestClass
 		AreEqual(34, channels[0]);
 		AreEqual(34, channels[1]);
 		AreEqual(139, channels[2]);
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task TheTextABoxShowsOfItsChoiceIsKeptOutWhereverItIsDrawn() => RunAsync(async () =>
+	{
+		// An account is chosen in a box on each of several tickets, and the same account is quoted in a line: the box is
+		// what a picture names, and what it shows is drawn by a template rather than held as a text of its own.
+		var account = new ComboBox
+		{
+			Name = "Account",
+			Width = 200,
+			FontSize = 20,
+			ItemsSource = new[] { "Gooner" },
+			SelectedIndex = 0,
+		};
+		var line = new TextBlock { Name = "Quote", Text = "account Gooner", FontSize = 20, Foreground = Brushes.Black };
+
+		var page = new StackPanel { Name = "TicketPage", Width = 380, Spacing = 12, Background = Brushes.White };
+
+		page.Children.Add(account);
+		page.Children.Add(line);
+
+		var window = new Window { Name = "TicketWindow", Width = 400, Height = 300, Content = page };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var pageId = fixture.Bind(page);
+		var accountId = fixture.Bind(account);
+		var artifacts = new UiArtifactStore();
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
+
+		var plain = await Pixels(service, artifacts, pageId, [], []);
+		var masked = await Pixels(service, artifacts, pageId, [new UiMask(accountId, null, UiMaskScopes.Text, null)], []);
+
+		var quoted = Drawn.Where(line, page, "Gooner");
+
+		IsTrue(plain.Steepest(quoted) > 128, "The account was not drawn in the line, so this proves nothing.");
+		IsTrue(masked.Steepest(quoted) < 24, "The account can still be read in the line.");
+		IsTrue(plain.Same(masked, Drawn.Where(line, page, "account")), "The line was blurred before the account.");
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task APictureWithItsPopupsShowsTheListOpenOverTheControl() => RunAsync(async () =>
+	{
+		// A page about a choice shows the list it is made from, and the list is a window of its own that hangs below
+		// the control it opened from: drawn without it, the picture shows a closed box.
+		var combo = new ComboBox
+		{
+			Name = "TheChoice",
+			Width = 160,
+			ItemsSource = new[] { "First", "Second", "Third", "Fourth", "Fifth" },
+			SelectedIndex = 0,
+		};
+		var panel = new StackPanel { Name = "ThePanel", Width = 200, Height = 40, VerticalAlignment = VerticalAlignment.Top };
+
+		panel.Children.Add(combo);
+
+		var window = new Window { Name = "TestWindow", Width = 400, Height = 300, Content = panel };
+
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		combo.IsDropDownOpen = true;
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+
+		using var fixture = new AutomationFixture(window);
+		var id = fixture.Bind(panel);
+		var artifacts = new UiArtifactStore();
+
+		var service = new AvaloniaScreenshotService(
+			fixture.Nodes, fixture.Adapters, fixture.Revisions, fixture.Executor, artifacts, fixture.InstanceId);
+
+		var without = await service.CaptureAsync(
+			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, false, 0, 0, null, [], []),
+			CancellationToken.None);
+
+		AreEqual(40, without.PixelHeight, "Without its popups the picture is not of the panel alone.");
+
+		var with = await service.CaptureAsync(
+			new UiScreenshotRequest(UiTarget.FromId(id), UiCaptureKinds.ControlRender, true, 0, 0, null, [], []),
+			CancellationToken.None);
+
+		IsTrue(with.PixelHeight > 80, $"The open list is not in the picture: it is {with.PixelHeight} tall.");
+
+		var chunk = artifacts.Read(new UiArtifactReadRequest(with.ArtifactId, 0, 4 * 1024 * 1024));
+
+		// Below the panel, where only the list can be.
+		AreEqual(255, PixelAt(chunk.Data, 20, with.PixelHeight - 10)[3], "Below the panel the picture is empty.");
+
+		// Below the panel and beside the list the window shows what the picture is not about: it is left out.
+		AreEqual(0, PixelAt(chunk.Data, with.PixelWidth - 10, with.PixelHeight - 10)[3], "The window around the panel is in the picture.");
 	});
 
 	private static byte[] PixelAt(byte[] png, int x, int y)

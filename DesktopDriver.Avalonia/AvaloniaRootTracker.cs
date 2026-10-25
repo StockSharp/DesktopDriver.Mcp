@@ -113,7 +113,12 @@ public sealed class AvaloniaRootTracker(AvaloniaNodeBinder binder) : IUiRootSour
 		}
 	}
 
-	private static IEnumerable<(TopLevel Popup, Control Opener)> PopupsOf(TopLevel root)
+	/// <summary>
+	/// The surfaces open over a window: a menu, a combo box's list, a flyout.
+	/// </summary>
+	/// <param name="root">The window.</param>
+	/// <returns>Each popup with what opened it.</returns>
+	internal static IEnumerable<(TopLevel Popup, Control Opener)> PopupsOf(TopLevel root)
 	{
 		foreach (var control in AvaloniaTopLevels.VisualsOf(root).OfType<Control>())
 		{
