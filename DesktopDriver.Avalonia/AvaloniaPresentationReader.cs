@@ -37,7 +37,8 @@ public sealed class AvaloniaPresentationReader : IUiPresentationReader
 				UiField<bool>.Known(false),
 				UiField<bool>.Known(false),
 				UiField<UiRect>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"),
-				UiField<double>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"));
+				UiField<double>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"),
+				UiField<string>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"));
 		}
 
 		var root = AvaloniaTopLevels.Of(visual);
@@ -53,7 +54,8 @@ public sealed class AvaloniaPresentationReader : IUiPresentationReader
 			control is null
 				? UiField<bool>.Unavailable(UiUnavailableReasons.Unsupported, "not a control")
 				: UiField<bool>.Known(control.IsEffectivelyEnabled),
-			UiField<bool>.Known(visual.IsEffectivelyVisible),
+			// A visual in no window is drawn nowhere, whatever its own flags and those of what still holds it say.
+			UiField<bool>.Known(attached && visual.IsEffectivelyVisible),
 			control is null
 				? UiField<bool>.Unavailable(UiUnavailableReasons.Unsupported, "not a control")
 				: UiField<bool>.Known(control.IsHitTestVisible),
@@ -63,7 +65,10 @@ public sealed class AvaloniaPresentationReader : IUiPresentationReader
 			ReadBounds(visual, root),
 			root is not null
 				? UiField<double>.Known(root.RenderScaling)
-				: UiField<double>.Unavailable(UiUnavailableReasons.NotLoaded, "not in a window"));
+				: UiField<double>.Unavailable(UiUnavailableReasons.NotLoaded, "not in a window"),
+			visual is StyledElement { ActualThemeVariant.Key: { } theme }
+				? UiField<string>.Known(theme.ToString())
+				: UiField<string>.Unavailable(UiUnavailableReasons.Unsupported, "no theme"));
 	}
 
 	// Relative to the surface, so that a panel keeps its geometry when its window is moved. Turning this

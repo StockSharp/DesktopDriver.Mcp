@@ -58,6 +58,46 @@ public class InputRoundTripTests : BaseTestClass
 	}
 
 	[TestMethod]
+	public void ADragFromOneSocketOfADiagramToAnotherArrivesWithBothEnds()
+	{
+		// A connection is made by carrying the press from a socket that gives data to one that takes it.
+		var restored = RoundTrip(Request(
+			new UiDiagramSocketPart("Candles1", "Output"),
+			new UiDragAction(new UiDiagramSocketPart("Indicator1", "Input"))));
+
+		var from = (UiDiagramSocketPart)restored.Part;
+		var to = (UiDiagramSocketPart)((UiDragAction)restored.Action).To;
+
+		AreEqual("Candles1", from.NodeKey);
+		AreEqual("Output", from.SocketId);
+		AreEqual("Indicator1", to.NodeKey);
+		AreEqual("Input", to.SocketId);
+	}
+
+	[TestMethod]
+	public void ABlockCarriedToAPlaceOfTheDiagramArrivesWithThePlace()
+	{
+		var restored = RoundTrip(Request(
+			new UiDiagramNodePart("Indicator1"),
+			new UiDragAction(new UiDiagramPointPart(320.5, 140))));
+
+		var to = (UiDiagramPointPart)((UiDragAction)restored.Action).To;
+
+		AreEqual(320.5, to.X);
+		AreEqual(140d, to.Y);
+	}
+
+	[TestMethod]
+	public void ABlockOfADiagramArrivesAsTheBlockThatWasNamed()
+	{
+		var restored = RoundTrip(Request(
+			new UiDiagramNodePart("Candles1"),
+			new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None)));
+
+		AreEqual("Candles1", ((UiDiagramNodePart)restored.Part).NodeKey);
+	}
+
+	[TestMethod]
 	public void ADragArrivesWithWhereItIsLetGo()
 	{
 		var restored = RoundTrip(Request(

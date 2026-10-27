@@ -30,7 +30,7 @@ public static class AvaloniaTopLevels
 			return null;
 
 		if (TopLevel.GetTopLevel(visual) is { } root)
-			return root;
+			return IsOpen(root) ? root : null;
 
 		// A layer of a window's frame: the window is the top level beside it, under the host both share.
 		var host = visual;
@@ -38,8 +38,13 @@ public static class AvaloniaTopLevels
 		while (host.GetVisualParent() is { } parent)
 			host = parent;
 
-		return host.GetVisualChildren().OfType<TopLevel>().FirstOrDefault();
+		return host.GetVisualChildren().OfType<TopLevel>().FirstOrDefault(IsOpen);
 	}
+
+	// A window that closed is still the root of what it held, and the window opened again in its place holds new controls
+	// under the same addresses. Asked from any thread - whether an address still means what it did is - so it is told
+	// by the window of the platform the top level lets go of when it closes, not by a property of the toolkit.
+	private static bool IsOpen(TopLevel root) => root.PlatformImpl is not null;
 
 	/// <summary>
 	/// The layers of the frame a window draws itself, in the order they are drawn.

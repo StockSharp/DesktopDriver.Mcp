@@ -83,7 +83,12 @@ public sealed class HeadlessInputDriver(IUiNodeRegistry registry, IUiExecutor ex
 		CancellationToken cancellationToken)
 	{
 		var control = Resolve(resolvedTarget.Node?.Id);
-		var window = AvaloniaTopLevels.Of(control) as Window
+
+		// Taken out of its window since it was aimed at, it is refused the way a control not there yet is.
+		var root = AvaloniaTopLevels.Of(control)
+			?? throw UiErrors.Fail(UiErrorCodes.NotCreated, "That control is not in a window.");
+
+		var window = root as Window
 			?? throw UiErrors.Fail(UiErrorCodes.InputUnavailable, "That control is not in a headless window.");
 
 		var point = new Point(resolvedTarget.PointInSurfaceDip.X, resolvedTarget.PointInSurfaceDip.Y);

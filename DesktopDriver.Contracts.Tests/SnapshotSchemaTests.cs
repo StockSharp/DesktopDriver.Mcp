@@ -120,7 +120,8 @@ public class SnapshotSchemaTests : BaseTestClass
 				UiField<bool>.Known(true),
 				UiField<bool>.Known(false),
 				UiField<UiRect>.Known(new UiRect(0, 0, 100, 40)),
-				UiField<double>.Known(1.5)),
+				UiField<double>.Known(1.5),
+				UiField<string>.Known("Dark")),
 			UiReadyStatuses.Ready,
 			["grid.rows"],
 			new BasicState(

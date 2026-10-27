@@ -404,10 +404,14 @@ internal static class UiCommands
 			UiChartOrderPart.KindName => new UiChartOrderPart(Required("order")),
 			UiChartOrderCancelPart.KindName => new UiChartOrderCancelPart(Required("order")),
 			UiChartAreaClosePart.KindName => new UiChartAreaClosePart(Required("area")),
+			UiDiagramNodePart.KindName => new UiDiagramNodePart(Required("block")),
+			UiDiagramSocketPart.KindName => new UiDiagramSocketPart(Required("block"), Required("socket")),
+			UiDiagramPointPart.KindName => new UiDiagramPointPart(Coordinate(Required("x")), Coordinate(Required("y"))),
 			_ => throw new UiUsageException(
 				$"--{prefix}part takes one of {UiControlPart.KindName}, {UiGridHeaderPart.KindName}, " +
 				$"{UiGridCellPart.KindName}, {UiGridCellControlPart.KindName}, {UiPropertyValuePart.KindName}, {UiPropertyValueControlPart.KindName}, {UiListItemPart.KindName}, {UiTreeItemPart.KindName}, {UiTreeItemControlPart.KindName}, {UiDockTabPart.KindName}, {UiDockClosePart.KindName}, {UiDockPinPart.KindName}, {UiRibbonItemPart.KindName}, " +
-				$"{UiChartAnnotationPart.KindName}, {UiChartPricePart.KindName}, {UiChartOrderPart.KindName}, {UiChartOrderCancelPart.KindName} or {UiChartAreaClosePart.KindName}, not '{kind}'."),
+				$"{UiChartAnnotationPart.KindName}, {UiChartPricePart.KindName}, {UiChartOrderPart.KindName}, {UiChartOrderCancelPart.KindName}, " +
+				$"{UiChartAreaClosePart.KindName}, {UiDiagramNodePart.KindName}, {UiDiagramSocketPart.KindName} or {UiDiagramPointPart.KindName}, not '{kind}'."),
 		};
 	}
 
@@ -415,6 +419,10 @@ internal static class UiCommands
 	// the point itself, and a price read the wrong way is an order at another price.
 	private static decimal Price(string text)
 		=> Parsed(decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var price), price, UiValueKinds.Decimal, text);
+
+	// A place of a diagram is written with a point too.
+	private static double Coordinate(string text)
+		=> Parsed(double.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var value), value, UiValueKinds.Double, text);
 
 	private static UiCondition Condition(UiArguments arguments)
 	{

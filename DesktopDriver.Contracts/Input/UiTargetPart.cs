@@ -29,6 +29,9 @@ using System.Text.Json.Serialization;
 [JsonDerivedType(typeof(UiChartAreaClosePart), UiChartAreaClosePart.KindName)]
 [JsonDerivedType(typeof(UiRibbonItemPart), UiRibbonItemPart.KindName)]
 [JsonDerivedType(typeof(UiListItemPart), UiListItemPart.KindName)]
+[JsonDerivedType(typeof(UiDiagramNodePart), UiDiagramNodePart.KindName)]
+[JsonDerivedType(typeof(UiDiagramSocketPart), UiDiagramSocketPart.KindName)]
+[JsonDerivedType(typeof(UiDiagramPointPart), UiDiagramPointPart.KindName)]
 public abstract record UiTargetPart
 {
 	/// <summary>
@@ -280,6 +283,50 @@ public sealed record UiChartAreaClosePart(string AreaId) : UiTargetPart
 {
 	/// <summary>The wire name.</summary>
 	public const string KindName = "chartAreaClose";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>A block of a diagram: pressed to choose it, held to carry it elsewhere.</summary>
+/// <param name="NodeKey">The block, as the diagram's nodes name it.</param>
+/// <remarks>
+/// Named by its key in the diagram rather than by a position: a block is somewhere else after every drag, and its key
+/// is what the connections name it by.
+/// </remarks>
+public sealed record UiDiagramNodePart(string NodeKey) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "diagramNode";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>A socket of a block of a diagram, where a connection starts or ends.</summary>
+/// <param name="NodeKey">The block, as the diagram's nodes name it.</param>
+/// <param name="SocketId">The socket, as the block's sockets name it.</param>
+/// <remarks>A press carried from one socket and let go on another connects the two.</remarks>
+public sealed record UiDiagramSocketPart(string NodeKey, string SocketId) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "diagramSocket";
+
+	/// <inheritdoc />
+	public override string Kind => KindName;
+}
+
+/// <summary>A place in a diagram, where a block carried there is let go.</summary>
+/// <param name="X">Across, in the diagram's own coordinates.</param>
+/// <param name="Y">Down, in the diagram's own coordinates.</param>
+/// <remarks>
+/// The diagram's coordinates rather than the window's, as a price names a place on a chart: a block keeps its place in
+/// them however the view is scrolled or zoomed, and the location of every block is given in them.
+/// </remarks>
+public sealed record UiDiagramPointPart(double X, double Y) : UiTargetPart
+{
+	/// <summary>The wire name.</summary>
+	public const string KindName = "diagramPoint";
 
 	/// <inheritdoc />
 	public override string Kind => KindName;

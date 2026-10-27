@@ -69,7 +69,7 @@ public sealed class UiSemanticTreeBuilder(
 		var nodes = ImmutableArray.CreateBuilder<UiNodeSnapshot>();
 		var links = ImmutableArray.CreateBuilder<UiChildLink>();
 		var warnings = ImmutableArray.CreateBuilder<string>();
-		var seen = new HashSet<UiNodeId>();
+		var seen = new Visits();
 		var queue = new Queue<(UiSubject Subject, int Depth)>();
 		var truncated = false;
 
@@ -80,7 +80,7 @@ public sealed class UiSemanticTreeBuilder(
 		{
 			var (subject, depth) = queue.Dequeue();
 
-			if (!seen.Add(subject.Id))
+			if (!seen.Add(subject))
 			{
 				// Reached a second time: the edge was already recorded, the node is already in the reply.
 				continue;
@@ -125,16 +125,14 @@ public sealed class UiSemanticTreeBuilder(
 					continue;
 				}
 
-				if (seen.Contains(link.Child.Id))
-					continue;
-
 				if (!_registry.TryResolve(link.Child.Id, out var child))
 				{
 					warnings.Add($"{link.Child.Id} is linked from {subject.Id} but is not registered.");
 					continue;
 				}
 
-				queue.Enqueue((child, depth + 1));
+				if (!seen.Contains(child))
+					queue.Enqueue((child, depth + 1));
 			}
 		}
 
@@ -152,7 +150,7 @@ public sealed class UiSemanticTreeBuilder(
 	{
 		ArgumentNullException.ThrowIfNull(id);
 
-		var seen = new HashSet<UiNodeId>();
+		var seen = new Visits();
 		var queue = new Queue<(UiSubject Subject, int Depth)>();
 		var visited = 0;
 
@@ -163,7 +161,7 @@ public sealed class UiSemanticTreeBuilder(
 		{
 			var (subject, depth) = queue.Dequeue();
 
-			if (!seen.Add(subject.Id) || ++visited > _searchBudget.MaxNodes)
+			if (!seen.Add(subject) || ++visited > _searchBudget.MaxNodes)
 				continue;
 
 			if (subject.Id == id)
@@ -179,15 +177,30 @@ public sealed class UiSemanticTreeBuilder(
 			// is looking for by the same act that makes the node addressable at all.
 			foreach (var link in container.ReadChildren(subject, new UiPageRequest(_searchBudget.MaxItems, null), context).Items)
 			{
-				if (link.Relation == UiRelations.OwnedReference || seen.Contains(link.Child.Id))
+				if (link.Relation == UiRelations.OwnedReference)
 					continue;
 
-				if (_registry.TryResolve(link.Child.Id, out var child))
+				if (_registry.TryResolve(link.Child.Id, out var child) && !seen.Contains(child))
 					queue.Enqueue((child, depth + 1));
 			}
 		}
 
 		return null;
+	}
+
+	// What a walk has been to is the object, not its address: two controls a product named alike share one address, and a
+	// walk that counted the second as the first would never look inside it. A node with no object of its own is told by
+	// its address, and an object by itself rather than by whatever it calls equal.
+	private sealed class Visits
+	{
+		private readonly HashSet<object> _objects = new(ReferenceEqualityComparer.Instance);
+		private readonly HashSet<UiNodeId> _addresses = [];
+
+		public bool Add(UiSubject subject)
+			=> subject.Instance is { } instance ? _objects.Add(instance) : _addresses.Add(subject.Id);
+
+		public bool Contains(UiSubject subject)
+			=> subject.Instance is { } instance ? _objects.Contains(instance) : _addresses.Contains(subject.Id);
 	}
 
 	private IEnumerable<UiSubject> StartingPoints(UiTreeQuery query, UiReadBudget budget)

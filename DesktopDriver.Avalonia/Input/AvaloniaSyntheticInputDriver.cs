@@ -119,8 +119,10 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 		var control = Resolve(resolvedTarget.Node?.Id)
 			?? throw UiErrors.Fail(UiErrorCodes.InputUnavailable, "That node is not a control this backend can reach.");
 
+		// Taken out of its window since it was aimed at - a list rebuilding its rows does that - and refused the way
+		// a control not there yet is, so that a caller waiting for it waits for the one that takes its place.
 		var root = AvaloniaTopLevels.Of(control)
-			?? throw UiErrors.Fail(UiErrorCodes.InputUnavailable, "That control is not in a window.");
+			?? throw UiErrors.Fail(UiErrorCodes.NotCreated, "That control is not in a window.");
 
 		var point = new Point(resolvedTarget.PointInSurfaceDip.X, resolvedTarget.PointInSurfaceDip.Y);
 
@@ -496,15 +498,26 @@ public sealed class AvaloniaSyntheticInputDriver(IUiNodeRegistry registry, IUiEx
 			count));
 
 	private void Release(Control control, TopLevel root, Point point, MouseButton button, KeyModifiers keys)
-		=> control.RaiseEvent(new PointerReleasedEventArgs(
-			control,
-			_pointer,
-			root,
-			point,
-			Stamp(),
-			new PointerPointProperties(ToRaw(keys), Up(button)),
-			keys,
-			button));
+	{
+		try
+		{
+			control.RaiseEvent(new PointerReleasedEventArgs(
+				control,
+				_pointer,
+				root,
+				point,
+				Stamp(),
+				new PointerPointProperties(ToRaw(keys), Up(button)),
+				keys,
+				button));
+		}
+		finally
+		{
+			// The button coming up ends any hold on the pointer, as the framework's own device ends it: a control that
+			// took the pointer and left letting it go to the device would otherwise be handed every later click.
+			_pointer.Capture(null);
+		}
+	}
 
 	private static void Key(Control control, Key key, KeyModifiers modifiers)
 	{

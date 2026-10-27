@@ -97,6 +97,9 @@ unrelated.
 | `chartPrice` | the product's chart adapter | the place in an area of a chart where a price is drawn |
 | `chartOrder` / `chartOrderCancel` | the product's chart adapter | the line of an order a chart shows, and the mark that cancels it |
 | `chartAreaClose` | the product's chart adapter | the cross on the header of a pane under the chart, which closes the pane |
+| `diagramNode` | the product's diagram adapter | a block of a diagram, by its key: pressed to choose it |
+| `diagramSocket` | the product's diagram adapter | a socket of a block; a drag from one socket let go on another connects the two |
+| `diagramPoint` | the product's diagram adapter | a place of a diagram in its own coordinates, where a block carried there is let go |
 
 A control that draws its own parts knows alone where each one is, and no other point of it would do: a
 price a few pixels off is another price. Its adapter works the point out and hands it to

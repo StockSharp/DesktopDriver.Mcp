@@ -35,7 +35,8 @@ public sealed class WpfPresentationReader : IUiPresentationReader
 				UiField<bool>.Known(false),
 				UiField<bool>.Known(false),
 				UiField<UiRect>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"),
-				UiField<double>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"));
+				UiField<double>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"),
+				UiField<string>.Unavailable(UiUnavailableReasons.NotCreated, "no visual"));
 		}
 
 		// The surface is the root of the presentation source a visual is drawn through: the window for
@@ -67,7 +68,9 @@ public sealed class WpfPresentationReader : IUiPresentationReader
 			element is null
 				? UiField<UiRect>.Unavailable(UiUnavailableReasons.Unsupported, "not a control")
 				: ReadBounds(element, root),
-			ReadScaling(source));
+			ReadScaling(source),
+			// WPF has no theme of its own to switch: what a product calls its theme is a set of its own resources.
+			UiField<string>.Unavailable(UiUnavailableReasons.Unsupported, "WPF draws in no theme of its own"));
 	}
 
 	// Relative to the surface, so that a panel keeps its geometry when its window is moved. Turning this

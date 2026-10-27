@@ -35,7 +35,8 @@ public static class InputTools
 		UiPropertyValuePart.KindName + ", " + UiPropertyValueControlPart.KindName + ", " + UiListItemPart.KindName + ", " +
 		UiTreeItemPart.KindName + ", " + UiTreeItemControlPart.KindName + ", " + UiDockTabPart.KindName + ", " +
 		UiDockClosePart.KindName + ", " + UiDockPinPart.KindName + ", " + UiChartAnnotationPart.KindName + ", " + UiChartPricePart.KindName + ", " +
-		UiChartOrderPart.KindName + ", " + UiChartOrderCancelPart.KindName + " or " + UiChartAreaClosePart.KindName;
+		UiChartOrderPart.KindName + ", " + UiChartOrderCancelPart.KindName + ", " + UiChartAreaClosePart.KindName + ", " +
+		UiDiagramNodePart.KindName + ", " + UiDiagramSocketPart.KindName + " or " + UiDiagramPointPart.KindName;
 
 	[McpServerTool(Name = "ui_click", Title = "Click something")]
 	[Description(
@@ -62,12 +63,16 @@ public static class InputTools
 		[Description("Which area of the chart, as its state names it, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
 		[Description("Which order, as the chart's state names it, for chartOrder and chartOrderCancel.")] string orderId = null,
+		[Description("Which block of a diagram, by its key, for diagramNode and diagramSocket.")] string blockKey = null,
+		[Description("Which socket of the block, by its id, for diagramSocket.")] string socketId = null,
+		[Description("Across, in the diagram's own coordinates, for diagramPoint.")] double? x = null,
+		[Description("Down, in the diagram's own coordinates, for diagramPoint.")] double? y = null,
 		CancellationToken cancellationToken = default)
 		=> SendAsync(
 			applications,
 			instance,
 			node,
-			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId, blockKey, socketId, x, y),
 			new UiClickAction(button, count > 0 ? count : 1, Modifiers(modifiers)),
 			cancellationToken);
 
@@ -94,6 +99,10 @@ public static class InputTools
 		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
 		[Description("Which order, for chartOrder and chartOrderCancel.")] string orderId = null,
+		[Description("Which block of a diagram, by its key, for diagramNode and diagramSocket.")] string blockKey = null,
+		[Description("Which socket of the block, by its id, for diagramSocket.")] string socketId = null,
+		[Description("Across, in the diagram's own coordinates, for diagramPoint.")] double? x = null,
+		[Description("Down, in the diagram's own coordinates, for diagramPoint.")] double? y = null,
 		[Description("Where it is let go: a part of the same node, named as part is.")] string toPart = null,
 		[Description("The column it is let go on.")] string toColumnId = null,
 		[Description("The row it is let go on.")] string toRowKey = null,
@@ -106,6 +115,10 @@ public static class InputTools
 		[Description("The area of the chart it is let go in.")] string toAreaId = null,
 		[Description("The price it is let go at.")] decimal? toPrice = null,
 		[Description("The order it is let go on.")] string toOrderId = null,
+		[Description("The block of a diagram it is let go on.")] string toBlockKey = null,
+		[Description("The socket of that block it is let go on.")] string toSocketId = null,
+		[Description("Across, in the diagram's own coordinates, where it is let go.")] double? toX = null,
+		[Description("Down, in the diagram's own coordinates, where it is let go.")] double? toY = null,
 		CancellationToken cancellationToken = default)
 	{
 		if (string.IsNullOrEmpty(toPart))
@@ -115,9 +128,10 @@ public static class InputTools
 			applications,
 			instance,
 			node,
-			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId, blockKey, socketId, x, y),
 			new UiDragAction(Part(
-				toPart, toColumnId, toRowKey, toControlName, toPropertyPath, toItemKey, toItemIndex, toPanelId, toAnnotationId, toAreaId, toPrice, toOrderId)),
+				toPart, toColumnId, toRowKey, toControlName, toPropertyPath, toItemKey, toItemIndex, toPanelId, toAnnotationId, toAreaId, toPrice, toOrderId,
+				toBlockKey, toSocketId, toX, toY)),
 			cancellationToken);
 	}
 
@@ -205,12 +219,16 @@ public static class InputTools
 		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
 		[Description("Which order, for chartOrder and chartOrderCancel.")] string orderId = null,
+		[Description("Which block of a diagram, by its key, for diagramNode and diagramSocket.")] string blockKey = null,
+		[Description("Which socket of the block, by its id, for diagramSocket.")] string socketId = null,
+		[Description("Across, in the diagram's own coordinates, for diagramPoint.")] double? x = null,
+		[Description("Down, in the diagram's own coordinates, for diagramPoint.")] double? y = null,
 		CancellationToken cancellationToken = default)
 		=> SendAsync(
 			applications,
 			instance,
 			node,
-			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId, blockKey, socketId, x, y),
 			UiHoverAction.Instance,
 			cancellationToken);
 
@@ -255,12 +273,16 @@ public static class InputTools
 		[Description("Which area of the chart, for chartPrice and chartAreaClose.")] string areaId = null,
 		[Description("Which price, for chartPrice.")] decimal? price = null,
 		[Description("Which order, for chartOrder and chartOrderCancel.")] string orderId = null,
+		[Description("Which block of a diagram, by its key, for diagramNode and diagramSocket.")] string blockKey = null,
+		[Description("Which socket of the block, by its id, for diagramSocket.")] string socketId = null,
+		[Description("Across, in the diagram's own coordinates, for diagramPoint.")] double? x = null,
+		[Description("Down, in the diagram's own coordinates, for diagramPoint.")] double? y = null,
 		CancellationToken cancellationToken = default)
 		=> SendAsync(
 			applications,
 			instance,
 			node,
-			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId),
+			Part(part, columnId, rowKey, controlName, propertyPath, itemKey, itemIndex, panelId, annotationId, areaId, price, orderId, blockKey, socketId, x, y),
 			UiEnsureVisibleAction.Instance,
 			cancellationToken);
 
@@ -350,7 +372,11 @@ public static class InputTools
 		string annotationId,
 		string areaId,
 		decimal? price,
-		string orderId)
+		string orderId,
+		string blockKey,
+		string socketId,
+		double? x,
+		double? y)
 		=> string.IsNullOrEmpty(part) ? UiControlPart.Instance : part switch
 		{
 			UiControlPart.KindName => UiControlPart.Instance,
@@ -374,6 +400,11 @@ public static class InputTools
 			UiChartOrderPart.KindName => new UiChartOrderPart(Needed(orderId, "orderId", part)),
 			UiChartOrderCancelPart.KindName => new UiChartOrderCancelPart(Needed(orderId, "orderId", part)),
 			UiChartAreaClosePart.KindName => new UiChartAreaClosePart(Needed(areaId, "areaId", part)),
+			UiDiagramNodePart.KindName => new UiDiagramNodePart(Needed(blockKey, "blockKey", part)),
+			UiDiagramSocketPart.KindName => new UiDiagramSocketPart(Needed(blockKey, "blockKey", part), Needed(socketId, "socketId", part)),
+			UiDiagramPointPart.KindName => new UiDiagramPointPart(
+				x ?? throw new McpException($"Aiming at a {part} needs x."),
+				y ?? throw new McpException($"Aiming at a {part} needs y.")),
 			_ => throw new McpException($"There is no part called '{part}'. The parts are {UiControlPart.KindName}, {_parts}."),
 		};
 

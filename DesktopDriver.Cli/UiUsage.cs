@@ -60,7 +60,9 @@ internal static class UiUsage
 		  --part treeItemControl --item <key> --control <name>; --part dockTab|dockClose|dockPin --panel <id>;
 		  --part ribbonItem --item <name>; --part chartAnnotation --annotation <id>;
 		  --part chartPrice --area <id> --price <price, with a point>; --part chartOrder|chartOrderCancel --order <id>;
-		  --part chartAreaClose --area <id>, the cross on the header of a pane under the chart.
+		  --part chartAreaClose --area <id>, the cross on the header of a pane under the chart;
+		  --part diagramNode --block <key>; --part diagramSocket --block <key> --socket <id>, a socket of a block;
+		  --part diagramPoint --x <x> --y <y>, a place of the diagram in its own coordinates, with a point.
 
 		  show brings a part onto the screen so that it can be clicked, through the control's own
 		  positioning. A row a thousand down has no visual until then - and a different one afterwards,

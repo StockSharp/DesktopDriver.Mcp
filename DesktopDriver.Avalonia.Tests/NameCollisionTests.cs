@@ -84,11 +84,76 @@ public class NameCollisionTests : BaseTestClass
 		return button;
 	}
 
+	// Two editors of one kind side by side, the way a window of an order holds an editor of the instrument and one of the
+	// account: each names a part of its own markup the same, and only what is inside that part tells them apart.
+	private static Window TwinEditorsWindow()
+	{
+		static ContentControl Editor(string name, string button)
+			=> new()
+			{
+				Name = name,
+				Content = new Border { Name = "EditorRoot", Child = new Button { Name = button, Content = button } },
+			};
+
+		return new Window
+		{
+			Name = "EditorsWindow",
+			Width = 400,
+			Height = 300,
+			Content = new StackPanel { Children = { Editor("FirstEditor", "FirstPicker"), Editor("SecondEditor", "SecondPicker") } },
+		};
+	}
+
 	private static UiTreeSnapshot Walk(AutomationFixture fixture)
 		=> fixture.Tree.Build(new UiTreeQuery(
 			null,
 			false,
 			UiCaptureOptions.Default with { Budget = new UiReadBudget(64, 20000, 2000) }));
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task WhatIsInsideTheSecondOfTwoPartsNamedAlikeIsWalked() => RunAsync(() =>
+	{
+		var window = TwinEditorsWindow();
+
+		Shown(window);
+
+		using var fixture = new AutomationFixture(window);
+
+		try
+		{
+			var ids = Walk(fixture).Nodes.Select(node => node.Node.Id.LocalId).ToArray();
+
+			IsTrue(ids.Contains("SecondPicker"), $"What is inside the second part was not reached; the tree holds {string.Join(", ", ids)}.");
+		}
+		finally
+		{
+			window.Close();
+		}
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	public Task WhatIsInsideTheSecondOfTwoPartsNamedAlikeIsFoundByItsAddress() => RunAsync(() =>
+	{
+		var window = TwinEditorsWindow();
+
+		Shown(window);
+
+		using var fixture = new AutomationFixture(window);
+
+		try
+		{
+			// Named before anything has read the window: the search is what finds it.
+			var subject = fixture.Nodes.Resolve(UiTarget.FromId(new UiNodeId("window:EditorsWindow", "SecondPicker")));
+
+			AreEqual("SecondPicker", ((Button)subject.Instance).Name);
+		}
+		finally
+		{
+			window.Close();
+		}
+	});
 
 	[TestMethod]
 	[Timeout(60000)]

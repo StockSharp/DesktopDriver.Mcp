@@ -32,7 +32,8 @@ public sealed class MauiPresentationReader : IUiPresentationReader
 				UiField<bool>.Known(false),
 				UiField<bool>.Known(false),
 				UiField<UiRect>.Unavailable(UiUnavailableReasons.NotCreated, "no element"),
-				UiField<double>.Unavailable(UiUnavailableReasons.NotCreated, "no element"));
+				UiField<double>.Unavailable(UiUnavailableReasons.NotCreated, "no element"),
+				UiField<string>.Unavailable(UiUnavailableReasons.NotCreated, "no element"));
 		}
 
 		var window = UiAutomationNames.GetWindow(element);
@@ -58,7 +59,10 @@ public sealed class MauiPresentationReader : IUiPresentationReader
 			ReadBounds(element, view),
 			scaling is { } known
 				? UiField<double>.Known(known)
-				: UiField<double>.Unavailable(UiUnavailableReasons.NotLoaded, "not in a window"));
+				: UiField<double>.Unavailable(UiUnavailableReasons.NotLoaded, "not in a window"),
+			Application.Current is { } application
+				? UiField<string>.Known(application.RequestedTheme.ToString())
+				: UiField<string>.Unavailable(UiUnavailableReasons.NotLoaded, "no application"));
 	}
 
 	// Relative to the window's client area, so that a page keeps its geometry when its window is moved.

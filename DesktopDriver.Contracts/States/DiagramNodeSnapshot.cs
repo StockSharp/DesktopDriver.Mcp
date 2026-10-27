@@ -1,5 +1,7 @@
 namespace StockSharp.DesktopDriver.States;
 
+using System.Collections.Immutable;
+
 using StockSharp.DesktopDriver.Snapshots;
 using StockSharp.DesktopDriver.Values;
 
@@ -10,14 +12,14 @@ using StockSharp.DesktopDriver.Values;
 /// <param name="TypeName">What kind of block it is.</param>
 /// <param name="DisplayText">What its caption reads as.</param>
 /// <param name="IsSelected">Whether it is selected.</param>
-/// <param name="InputSocketCount">How many sockets it takes from.</param>
-/// <param name="OutputSocketCount">How many it gives to.</param>
+/// <param name="Sockets">The sockets it takes data through and gives data through.</param>
 /// <param name="BoundsInSurfaceDip">Where it was drawn.</param>
+/// <param name="Location">Where it is placed, in the diagram's own coordinates: the ones a diagramPoint names.</param>
 public sealed record DiagramNodeSnapshot(
 	string Key,
 	UiField<string> TypeName,
 	UiField<string> DisplayText,
 	bool IsSelected,
-	UiField<long> InputSocketCount,
-	UiField<long> OutputSocketCount,
-	UiField<UiRect> BoundsInSurfaceDip);
+	ImmutableArray<DiagramSocketSnapshot> Sockets,
+	UiField<UiRect> BoundsInSurfaceDip,
+	UiField<UiPoint> Location);

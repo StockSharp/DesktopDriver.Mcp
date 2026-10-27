@@ -63,7 +63,8 @@ internal sealed class StubPresentationReader : IUiPresentationReader
 			UiField<bool>.Known(true),
 			UiField<bool>.Known(false),
 			UiField<UiRect>.Known(new UiRect(0, 0, 10, 10)),
-			UiField<double>.Known(1));
+			UiField<double>.Known(1),
+			UiField<string>.Known("Light"));
 }
 
 internal class StubAdapter(string kind, Type targetType) : IUiSnapshotAdapter

@@ -69,6 +69,32 @@ public class PointerGestureTests : BaseTestClass
 		}
 	}
 
+	// Takes the pointer on a press and leaves letting it go to the device, which ends every hold when the button comes up.
+	private sealed class Keeper : Control
+	{
+		public int Releases { get; private set; }
+
+		public override void Render(DrawingContext context) => context.FillRectangle(Brushes.Gray, new Rect(Bounds.Size));
+
+		protected override void OnPointerPressed(PointerPressedEventArgs e)
+		{
+			e.Pointer.Capture(this);
+			e.Handled = true;
+		}
+
+		protected override void OnPointerReleased(PointerReleasedEventArgs e) => Releases++;
+	}
+
+	// Clicked when the button comes up over it, without taking hold of the pointer, as an entry of a menu is.
+	private sealed class Entry : Control
+	{
+		public int Releases { get; private set; }
+
+		public override void Render(DrawingContext context) => context.FillRectangle(Brushes.LightGray, new Rect(Bounds.Size));
+
+		protected override void OnPointerReleased(PointerReleasedEventArgs e) => Releases++;
+	}
+
 	// Aims a price at the height inside the surface the price names, half way across.
 	private sealed class SurfaceAdapter(AvaloniaNodeBinder binder) : AvaloniaControlAdapter(binder), IUiInputTargetAdapter
 	{
@@ -192,6 +218,33 @@ public class PointerGestureTests : BaseTestClass
 
 		for (var index = 1; index < surface.HeldMoves.Count; index++)
 			IsTrue(surface.HeldMoves[index].Y >= surface.HeldMoves[index - 1].Y, "The pointer went back on its way down.");
+	});
+
+	[TestMethod]
+	[Timeout(60000)]
+	[DataRow(false)]
+	[DataRow(true)]
+	public Task AHoldOnThePointerEndsWhenTheButtonComesUp(bool synthetic) => RunAsync(async () =>
+	{
+		// A hold that outlived the button would be handed the next click wherever it was aimed: an entry of a menu opened
+		// afterwards is pressed and lit, and never clicked.
+		var keeper = new Keeper { Name = "Keeper", Height = 50, VerticalAlignment = VerticalAlignment.Bottom };
+		var entry = new Entry { Name = "Entry", Height = 50, VerticalAlignment = VerticalAlignment.Top };
+		var cover = new Grid { Children = { keeper, entry } };
+		var (window, _) = NewWindow(cover);
+
+		using var fixture = Fixture(window, synthetic);
+
+		await fixture.Input.ExecuteAsync(
+			Request(fixture.Bind(keeper), UiControlPart.Instance, new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None)),
+			CancellationToken.None);
+		await fixture.Input.ExecuteAsync(
+			Request(fixture.Bind(entry), UiControlPart.Instance, new UiClickAction(UiPointerButtons.Left, 1, UiKeyModifiers.None)),
+			CancellationToken.None);
+		Dispatcher.UIThread.RunJobs();
+
+		AreEqual(1, entry.Releases, "The click that followed the hold was not let go where it was aimed.");
+		AreEqual(1, keeper.Releases, "The control that held the pointer was handed a click aimed elsewhere.");
 	});
 
 	[TestMethod]
